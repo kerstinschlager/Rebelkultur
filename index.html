@@ -10,33 +10,27 @@
 <body>
   <header class="site-header">
     <a class="brand" href="#shop" aria-label="Rebelkultur Shops Startseite"><span class="brand-mark">RK</span><span><strong>Rebelkultur</strong><small>SHOPS</small></span></a>
-    <nav>
-      <button data-view="shop" class="nav-btn active">Shop</button>
-      <button data-view="dashboard" class="nav-btn">Händlerbereich</button>
-    </nav>
+    <nav><button data-view="shop" class="nav-btn active">Shop</button><button data-view="dashboard" class="nav-btn">Händlerbereich</button></nav>
     <div class="header-actions"><span id="authStatus" class="muted"></span><button id="authBtn" class="cart-btn">Anmelden</button><button id="cartBtn" class="cart-btn">Warenkorb <span id="cartCount">0</span></button></div>
   </header>
-
   <main>
     <section id="shopView" class="view">
       <div class="hero"><div><p class="eyebrow">MOTORSPORT · STREETWEAR · RACING</p><h1>Dein Style. Deine Strecke. <span>Deine Marke.</span></h1><p>Rebelkultur Shops verbindet Motorsport, Karting und Streetwear in einer modernen Shop-Plattform.</p><a href="#products" class="primary">Produkte entdecken</a></div><div class="hero-card"><div class="speed">R</div><strong>REBELKULTUR</strong><small>RACING CULTURE</small></div></div>
       <div class="toolbar" id="products"><input id="search" type="search" placeholder="Produkte suchen …" /><select id="categoryFilter"><option value="all">Alle Kategorien</option></select><select id="sort"><option value="new">Neueste</option><option value="priceAsc">Preis aufsteigend</option><option value="priceDesc">Preis absteigend</option></select></div>
       <div id="productGrid" class="product-grid"></div>
     </section>
-
     <section id="dashboardView" class="view hidden">
-      <div class="page-head"><div><p class="eyebrow">HÄNDLERBEREICH</p><h2>Rebelkultur Dashboard</h2><p>Produkte und Bestellungen sicher über dein Händlerkonto verwalten.</p></div><button id="addProductBtn" class="primary">+ Produkt hinzufügen</button></div>
+      <div class="page-head"><div><p class="eyebrow">HÄNDLERBEREICH</p><h2>Rebelkultur Dashboard</h2><p>Produkte, Bestellungen und Shop-Einstellungen verwalten.</p></div><button id="addProductBtn" class="primary">+ Produkt hinzufügen</button></div>
       <div class="stats" id="stats"></div>
-      <div class="dashboard-grid"><article class="panel"><div class="panel-head"><h3>Produkte</h3><span id="productTotal"></span></div><div id="adminProducts"></div></article><article class="panel"><div class="panel-head"><h3>Letzte Bestellungen</h3><span>Live-Daten folgen</span></div><div id="orders"><p class="muted">Melde dich als Händler an, um deine Bestellungen zu sehen.</p></div></article></div>
+      <div class="dashboard-grid"><article class="panel"><div class="panel-head"><h3>Produkte</h3><span id="productTotal"></span></div><div id="adminProducts"></div></article><article class="panel"><div class="panel-head"><h3>Letzte Bestellungen</h3><span>Live</span></div><div id="orders"><p class="muted">Noch keine Bestellungen.</p></div></article></div>
     </section>
   </main>
-
-  <div id="authModal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button class="close" data-close="authModal">×</button><h2 id="authTitle">Händler anmelden</h2><form id="authForm"><label>E-Mail<input id="authEmail" type="email" required autocomplete="email" /></label><label>Passwort<input id="authPassword" type="password" required minlength="6" autocomplete="current-password" /></label><label id="authNameWrap" class="hidden">Shop-/Anzeigename<input id="authName" autocomplete="name" /></label><button class="primary" type="submit" id="authSubmit">Anmelden</button></form><p id="authSwitchText" class="muted">Noch kein Konto? <button type="button" id="authSwitch" class="link-btn">Konto erstellen</button></p></div></div>
-
-  <div id="productModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal-card"><button class="close" data-close="productModal">×</button><h2 id="modalTitle">Produkt hinzufügen</h2><form id="productForm"><input type="hidden" id="productId" /><label>Name<input id="name" required /></label><label>Kategorie<input id="category" required placeholder="z. B. Hoodies" /></label><div class="two"><label>Preis (€)<input id="price" type="number" min="0" step="0.01" required /></label><label>Bestand<input id="stock" type="number" min="0" required /></label></div><label>Bild-URL<input id="image" type="url" placeholder="https://…" /></label><label>Beschreibung<textarea id="description" rows="4"></textarea></label><button class="primary" type="submit">Speichern</button></form></div></div>
+  <div id="authModal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button class="close" data-close="authModal">×</button><h2 id="authTitle">Anmelden</h2><form id="authForm"><label>E-Mail<input id="authEmail" type="email" required autocomplete="email" /></label><label>Passwort<input id="authPassword" type="password" required minlength="6" autocomplete="current-password" /></label><label id="authNameWrap" class="hidden">Shop-/Anzeigename<input id="authName" autocomplete="name" /></label><button class="primary" type="submit" id="authSubmit">Anmelden</button></form><p id="authSwitchText" class="muted"></p></div></div>
+  <div id="productModal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button class="close" data-close="productModal">×</button><h2 id="modalTitle">Produkt hinzufügen</h2><form id="productForm"><input type="hidden" id="productId" /><label>Name<input id="name" required /></label><label>Kategorie<input id="category" required placeholder="z. B. Hoodies" /></label><div class="two"><label>Preis (€)<input id="price" type="number" min="0" step="0.01" required /></label><label>Bestand<input id="stock" type="number" min="0" required /></label></div><label>Bild-URL<input id="image" type="url" placeholder="https://…" /></label><label>Beschreibung<textarea id="description" rows="4"></textarea></label><button class="primary" type="submit">Speichern</button></form></div></div>
   <div id="cartModal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button class="close" data-close="cartModal">×</button><h2>Warenkorb</h2><div id="cartItems"></div><div class="cart-total"><strong>Gesamt</strong><strong id="cartTotal">0,00 €</strong></div><button id="checkoutBtn" class="primary full">Zur Kasse</button></div></div>
+  <div id="checkoutModal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button class="close" data-close="checkoutModal">×</button><h2>Bestellung abschließen</h2><form id="checkoutForm"><label>Name<input id="checkoutName" required autocomplete="name" /></label><label>E-Mail<input id="checkoutEmail" type="email" required autocomplete="email" /></label><label>Lieferadresse<textarea id="checkoutAddress" rows="4" required autocomplete="street-address"></textarea></label><button class="primary full" type="submit">Bestellung aufgeben</button></form><p class="muted">Die Bestellung wird zunächst als offen gespeichert. Eine Online-Zahlung wird als nächster Schritt angebunden.</p></div></div>
+  <div id="successModal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button class="close" data-close="successModal">×</button><h2>Bestellung erhalten</h2><p id="successText">Vielen Dank für deine Bestellung.</p><button class="primary full" data-close="successModal">Weiter einkaufen</button></div></div>
   <div id="toast" class="toast"></div>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="app.js"></script>
 </body>
 </html>
