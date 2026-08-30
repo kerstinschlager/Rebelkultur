@@ -6,11 +6,12 @@
   <meta name="description" content="Rebelkultur Shops – Motorsport Streetwear und Händlerplattform." />
   <title>Rebelkultur Shops</title>
   <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="admin.css" />
 </head>
 <body>
   <header class="site-header">
     <a class="brand" href="#shop" aria-label="Rebelkultur Shops Startseite"><span class="brand-mark">RK</span><span><strong>Rebelkultur</strong><small>SHOPS</small></span></a>
-    <nav><button data-view="shop" class="nav-btn active">Shop</button><button data-view="dashboard" class="nav-btn">Händlerbereich</button></nav>
+    <nav><button data-view="shop" class="nav-btn active">Shop</button><button data-view="dashboard" class="nav-btn">Händlerbereich</button><button data-view="admin" class="nav-btn hidden" id="adminNavBtn">Admin</button></nav>
     <div class="header-actions"><span id="authStatus" class="muted"></span><button id="authBtn" class="cart-btn">Anmelden</button><button id="cartBtn" class="cart-btn">Warenkorb <span id="cartCount">0</span></button></div>
   </header>
   <main>
@@ -31,6 +32,16 @@
       <div id="dashboardFaq" class="dash-panel hidden"><article class="panel"><h3>FAQ & Support</h3><details open><summary>Wann ist mein Shop startbereit?</summary><p>Nach Einrichtung von Produkten, Rechtstexten und Zahlungsablauf kann der Shop veröffentlicht werden.</p></details><details><summary>Wie erhalte ich mein Geld?</summary><p>Das richtet sich nach dem von dir verbundenen Zahlungsanbieter und dessen Auszahlungsplan.</p></details><details><summary>Welche Produkte sind möglich?</summary><p>Die Plattform ist für physische Produkte, Merchandise und perspektivisch weitere Produktarten ausgelegt.</p></details><button class="secondary" type="button" onclick="toast('Support-Tickets werden als nächster Ausbau angebunden')">Support anfragen</button></article></div>
       <div id="dashboardMarketing" class="dash-panel hidden"><article class="panel"><h3>Marketing & erster Traffic</h3><div class="marketing-grid"><div><strong>Social Media</strong><p>Shop-Link in Instagram, TikTok und Facebook platzieren.</p></div><div><strong>Direktmarketing</strong><p>Shop-Angebote und neue Produkte über geeignete Kanäle bewerben.</p></div><div><strong>Content</strong><p>Produktvideos, Reels und Story-Content regelmäßig veröffentlichen.</p></div></div></article></div>
     </section>
+    <section id="adminView" class="view hidden">
+      <div class="page-head"><div><p class="eyebrow">PLATTFORM-ADMIN</p><h2>Rebelkultur Verwaltung</h2><p>Zentrale Kennzahlen für Nutzer, Händler, Umsatz und Provisionen.</p></div><button id="refreshAdmin" class="secondary">↻ Aktualisieren</button></div>
+      <div id="adminGate" class="admin-gate hidden"><strong>Kein Admin-Zugriff.</strong><span>Dein Benutzerkonto benötigt die Rolle „admin“.</span></div>
+      <div id="adminContent" class="hidden">
+        <div class="admin-filterbar"><label>Zeitraum<select id="adminPeriod"><option value="all">Gesamt</option><option value="30">Letzte 30 Tage</option><option value="7">Letzte 7 Tage</option><option value="1">Heute</option></select></label><label>Standard-Provision (%)<input id="defaultCommission" type="number" min="0" max="100" step="0.1" value="10"></label><button id="saveCommission" class="primary">Provisionssatz speichern</button></div>
+        <div class="admin-stats" id="adminStats"></div>
+        <div class="admin-grid"><article class="panel"><div class="panel-head"><h3>Händler</h3><span id="merchantTotal"></span></div><div id="merchantTable" class="admin-table"></div></article><article class="panel"><div class="panel-head"><h3>Letzte Bestellungen</h3><span id="adminOrderTotal"></span></div><div id="adminOrderTable" class="admin-table"></div></article></div>
+        <div class="admin-grid admin-grid-wide"><article class="panel"><div class="panel-head"><h3>Auszahlungen</h3><span>Händlerbeträge</span></div><div id="payoutTable" class="admin-table"></div></article><article class="panel"><div class="panel-head"><h3>System</h3><span>Live</span></div><div id="adminSystem" class="admin-system"></div></article></div>
+      </div>
+    </section>
   </main>
   <div id="authModal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button class="close" data-close="authModal">×</button><h2 id="authTitle">Anmelden</h2><form id="authForm"><label>E-Mail<input id="authEmail" type="email" required autocomplete="email" /></label><label>Passwort<input id="authPassword" type="password" required minlength="6" autocomplete="current-password" /></label><label id="authNameWrap" class="hidden">Shop-/Anzeigename<input id="authName" autocomplete="name" /></label><button class="primary" type="submit" id="authSubmit">Anmelden</button></form><p id="authSwitchText" class="muted"></p></div></div>
   <div id="productModal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button class="close" data-close="productModal">×</button><h2 id="modalTitle">Produkt hinzufügen</h2><form id="productForm"><input type="hidden" id="productId" /><label>Name<input id="name" required /></label><label>Kategorie<input id="category" required placeholder="z. B. Hoodies" /></label><div class="two"><label>Preis (€)<input id="price" type="number" min="0" step="0.01" required /></label><label>Bestand<input id="stock" type="number" min="0" required /></label></div><label>Bild-URL<input id="image" type="url" placeholder="https://…" /></label><label>Beschreibung<textarea id="description" rows="4"></textarea></label><button class="primary" type="submit">Speichern</button></form></div></div>
@@ -38,6 +49,6 @@
   <div id="checkoutModal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button class="close" data-close="checkoutModal">×</button><h2>Bestellung abschließen</h2><form id="checkoutForm"><label>Name<input id="checkoutName" required autocomplete="name" /></label><label>E-Mail<input id="checkoutEmail" type="email" required autocomplete="email" /></label><label>Lieferadresse<textarea id="checkoutAddress" rows="4" required autocomplete="street-address"></textarea></label><button class="primary full" type="submit">Bestellung aufgeben</button></form><p class="muted">Die Bestellung wird zunächst gespeichert. Eine Online-Zahlung wird separat angebunden.</p></div></div>
   <div id="successModal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button class="close" data-close="successModal">×</button><h2>Bestellung erhalten</h2><p id="successText">Vielen Dank für deine Bestellung.</p><button class="primary full" data-close="successModal">Weiter einkaufen</button></div></div>
   <div id="toast" class="toast"></div>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="app.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script src="app.js"></script><script src="admin.js"></script>
 </body>
 </html>
