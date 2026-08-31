@@ -7,6 +7,7 @@
   <title>Rebelkultur Shops</title>
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="admin.css" />
+  <link rel="stylesheet" href="onboarding.css" />
 </head>
 <body>
   <header class="site-header">
@@ -27,7 +28,7 @@
       <div id="dashboardProducts" class="dash-panel hidden"><article class="panel"><div class="panel-head"><h3>Produkte verwalten</h3><span>Artikel hinzufügen, bearbeiten und löschen</span></div><div id="adminProductsFull"></div></article></div>
       <div id="dashboardOrders" class="dash-panel hidden"><article class="panel"><div class="panel-head"><h3>Bestellungen</h3><span>Kundenkäufe zur Abwicklung</span></div><div id="ordersFull"></div></article></div>
       <div id="dashboardSettings" class="dash-panel hidden"><article class="panel"><h3>Shop-Einstellungen</h3><div class="settings-grid"><label>Shop-Name<input id="settingShopName" placeholder="Dein Shopname"></label><label>Shop-URL<input id="settingShopUrl" placeholder="https://…"></label><label>Zahlungsanbieter<select id="settingPayment"><option value="">Noch nicht verbunden</option><option>Stripe</option><option>PayPal</option><option>Weitere Anbieter</option></select></label><label>Bestell-E-Mail<input id="settingOrderEmail" type="email" placeholder="shop@example.com"></label></div><button id="saveSettings" class="primary">Einstellungen speichern</button><p id="settingsHint" class="muted">Die Zahlungsanbindung wird erst nach Auswahl und Konfiguration des Anbieters aktiv.</p></article></div>
-      <div id="dashboardLegal" class="dash-panel hidden"><article class="panel"><h3>Rechtliches</h3><p>Hier werden Impressum, Datenschutzerklärung, AGB und Widerrufsbelehrung hinterlegt.</p><div class="legal-grid"><div>Impressum<br><span>Vorlage hinterlegen</span></div><div>Datenschutz<br><span>Vorlage hinterlegen</span></div><div>AGB<br><span>Vorlage hinterlegen</span></div><div>Widerruf<br><span>Vorlage hinterlegen</span></div></div></article></div>
+      <div id="dashboardLegal" class="dash-panel hidden"><article class="panel"><h3>Rechtliches</h3><p>Hier werden Impressum, Datenschutz, AGB und Widerrufsbelehrung hinterlegt.</p><div class="legal-grid"><div>Impressum<br><span>Vorlage hinterlegen</span></div><div>Datenschutz<br><span>Vorlage hinterlegen</span></div><div>AGB<br><span>Vorlage hinterlegen</span></div><div>Widerruf<br><span>Vorlage hinterlegen</span></div></div></article></div>
       <div id="dashboardChecklist" class="dash-panel hidden"><article class="panel"><h3>Start-Checkliste</h3><div class="checklist"><label><input type="checkbox"> Produktnamen und Preise prüfen</label><label><input type="checkbox"> Bilder und Beschreibungen ergänzen</label><label><input type="checkbox"> Zahlungsanbieter verbinden</label><label><input type="checkbox"> Impressum und Datenschutz hinterlegen</label><label><input type="checkbox"> Testbestellung durchführen</label></div></article></div>
       <div id="dashboardFaq" class="dash-panel hidden"><article class="panel"><h3>FAQ & Support</h3><details open><summary>Wann ist mein Shop startbereit?</summary><p>Nach Einrichtung von Produkten, Rechtstexten und Zahlungsablauf kann der Shop veröffentlicht werden.</p></details><details><summary>Wie erhalte ich mein Geld?</summary><p>Das richtet sich nach dem von dir verbundenen Zahlungsanbieter und dessen Auszahlungsplan.</p></details><details><summary>Welche Produkte sind möglich?</summary><p>Die Plattform ist für unterschiedliche Waren, Services und perspektivisch weitere Produktarten ausgelegt.</p></details><button class="secondary" type="button" onclick="toast('Support-Tickets werden als nächster Ausbau angebunden')">Support anfragen</button></article></div>
       <div id="dashboardMarketing" class="dash-panel hidden"><article class="panel"><h3>Marketing</h3><div class="marketing-grid"><div><strong>Social Media</strong><p>Shop-Link in Instagram, TikTok und Facebook platzieren.</p></div><div><strong>Direktmarketing</strong><p>Shop-Angebote und neue Produkte über geeignete Kanäle bewerben.</p></div><div><strong>Content</strong><p>Produktvideos, Beiträge und Inhalte regelmäßig veröffentlichen.</p></div></div></article></div>
@@ -46,6 +47,6 @@
   <div id="toast" class="toast"></div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>window.__RK_SUPABASE_URL='https://oansbivjkczjbtxaknks.supabase.co';window.__RK_SUPABASE_KEY='sb_publishable_9tDZPZ9KmCjHZqVXBmO-1g_8Aqpu8qE';const __rkCreate=window.supabase.createClient.bind(window.supabase);window.supabase.createClient=(url,key,...rest)=>__rkCreate(window.__RK_SUPABASE_URL,key,...rest);</script>
-  <script src="app.js"></script><script src="admin.js"></script><script src="security-patch.js"></script>
+  <script src="app.js"></script><script src="admin.js"></script><script src="security-patch.js"></script><script src="onboarding.js"></script>
 </body>
 </html>
