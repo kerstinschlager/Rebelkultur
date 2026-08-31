@@ -3,7 +3,7 @@
   function setVal(id,v){const e=q(id);if(e)e.value=v??''}
   function escp(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]))}
   function toastP(t){if(typeof toast==='function')toast(t)}
-  function publicShopUrl(slug){return location.origin+location.pathname.replace(/[^/]+$/,'')+'shop.html?shop='+encodeURIComponent(slug||'')}
+  function publicShopUrl(slug){return location.origin+location.pathname.replace(/[^/]+$/,'')+'shop/?shop='+encodeURIComponent(slug||'')}
   function inject(){
     const panel=q('#dashboardSettings');
     if(!panel || q('#merchantProfileFields')) return;
