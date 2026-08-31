@@ -1,5 +1,5 @@
 (function(){
-  const URL='https://oansbivkczjbtxaknks.supabase.co';
+  const URL='https://oansbivjkczjbtxaknks.supabase.co';
   const KEY='sb_publishable_9tDZPZ9KmCjHZqVXBmO-1g_8Aqpu8qE';
   const db=window.supabase.createClient(URL,KEY);
   const base=location.origin+location.pathname.replace(/[^/]+$/,'');
@@ -20,11 +20,8 @@
     if(error){console.error(error);grid.innerHTML='<p class="muted">Händler konnten nicht geladen werden.</p>';return}
     const rows=data||[];
     count.textContent=`${rows.length} ${rows.length===1?'Händler':'Händler'}`;
-    grid.innerHTML=rows.map(m=>{
-      const href=base+'shop/?shop='+encodeURIComponent(m.slug||'');
-      const img=m.logo_url?`<img src="${esc(m.logo_url)}" alt="${esc(m.shop_name)} Logo">`:'RK';
-      return `<article class="merchant-card"><div class="merchant-card-top"><div class="merchant-avatar">${img}</div><div><div class="merchant-badge">VERÖFFENTLICHT</div><h3>${esc(m.shop_name)}</h3></div></div><p>${esc(m.description||'Händler-Shop auf Rebelkultur.')}</p><a class="primary" href="${esc(href)}">Shop ansehen →</a></article>`;
-    }).join('')||'<p class="muted">Noch keine veröffentlichten Händler.</p>';
+    grid.innerHTML=rows.map(m=>{const href=base+'shop/?shop='+encodeURIComponent(m.slug||'');const img=m.logo_url?`<img src="${esc(m.logo_url)}" alt="${esc(m.shop_name)} Logo">`:'RK';return `<article class="merchant-card"><div class="merchant-card-top"><div class="merchant-avatar">${img}</div><div><div class="merchant-badge">VERÖFFENTLICHT</div><h3>${esc(m.shop_name)}</h3></div></div><p>${esc(m.description||'Händler-Shop auf Rebelkultur.')}</p><a class="primary" href="${esc(href)}">Shop ansehen →</a></article>`}).join('')||'<p class="muted">Noch keine veröffentlichten Händler.</p>';
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(mount,700));else setTimeout(mount,700);
+  function loadFilterScript(){if(document.querySelector('script[data-marketplace-filters]'))return;const s=document.createElement('script');s.src=base+'marketplace-filters.js';s.dataset.marketplaceFilters='1';document.body.appendChild(s)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{setTimeout(mount,700);setTimeout(loadFilterScript,1200)});else{setTimeout(mount,700);setTimeout(loadFilterScript,1200)}
 })();
