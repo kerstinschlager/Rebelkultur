@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Rebelkultur Shops – Motorsport Streetwear und Händlerplattform." />
+  <meta name="description" content="Rebelkultur Shops – Shop- und Händlerplattform." />
   <title>Rebelkultur Shops</title>
   <link rel="stylesheet" href="styles.css" />
   <link rel="stylesheet" href="admin.css" />
@@ -16,7 +16,7 @@
   </header>
   <main>
     <section id="shopView" class="view">
-      <div class="hero"><div><p class="eyebrow">MOTORSPORT · STREETWEAR · RACING</p><h1>Dein Style. Deine Strecke. <span>Deine Marke.</span></h1><p>Rebelkultur Shops verbindet Motorsport, Karting und Streetwear in einer modernen Shop-Plattform.</p><a href="#products" class="primary">Produkte entdecken</a></div><div class="hero-card"><div class="speed">R</div><strong>REBELKULTUR</strong><small>RACING CULTURE</small></div></div>
+      <div class="hero"><div><h1>Dein Shop. <span>Deine Marke.</span></h1><p>Rebelkultur Shops verbindet unabhängige Händler und Kunden auf einer gemeinsamen Plattform.</p><a href="#products" class="primary">Produkte entdecken</a></div><div class="hero-card"><div class="speed">R</div><strong>REBELKULTUR</strong><small>SHOPS</small></div></div>
       <div class="toolbar" id="products"><input id="search" type="search" placeholder="Produkte suchen …" /><select id="categoryFilter"><option value="all">Alle Kategorien</option></select><select id="sort"><option value="new">Neueste</option><option value="priceAsc">Preis aufsteigend</option><option value="priceDesc">Preis absteigend</option></select></div>
       <div id="productGrid" class="product-grid"></div>
     </section>
@@ -35,12 +35,7 @@
     <section id="adminView" class="view hidden">
       <div class="page-head"><div><p class="eyebrow">PLATTFORM-ADMIN</p><h2>Rebelkultur Verwaltung</h2><p>Zentrale Kennzahlen für Nutzer, Händler, Umsatz und Provisionen.</p></div><button id="refreshAdmin" class="secondary">↻ Aktualisieren</button></div>
       <div id="adminGate" class="admin-gate hidden"><strong>Kein Admin-Zugriff.</strong><span>Dein Benutzerkonto benötigt die Rolle „admin“.</span></div>
-      <div id="adminContent" class="hidden">
-        <div class="admin-filterbar"><label>Zeitraum<select id="adminPeriod"><option value="all">Gesamt</option><option value="30">Letzte 30 Tage</option><option value="7">Letzte 7 Tage</option><option value="1">Heute</option></select></label><label>Standard-Provision (%)<input id="defaultCommission" type="number" min="0" max="100" step="0.1" value="10"></label><button id="saveCommission" class="primary">Provisionssatz speichern</button></div>
-        <div class="admin-stats" id="adminStats"></div>
-        <div class="admin-grid"><article class="panel"><div class="panel-head"><h3>Händler</h3><span id="merchantTotal"></span></div><div id="merchantTable" class="admin-table"></div></article><article class="panel"><div class="panel-head"><h3>Letzte Bestellungen</h3><span id="adminOrderTotal"></span></div><div id="adminOrderTable" class="admin-table"></div></article></div>
-        <div class="admin-grid admin-grid-wide"><article class="panel"><div class="panel-head"><h3>Auszahlungen</h3><span>Händlerbeträge</span></div><div id="payoutTable" class="admin-table"></div></article><article class="panel"><div class="panel-head"><h3>System</h3><span>Live</span></div><div id="adminSystem" class="admin-system"></div></article></div>
-      </div>
+      <div id="adminContent" class="hidden"><div class="admin-filterbar"><label>Zeitraum<select id="adminPeriod"><option value="all">Gesamt</option><option value="30">Letzte 30 Tage</option><option value="7">Letzte 7 Tage</option><option value="1">Heute</option></select></label><label>Standard-Provision (%)<input id="defaultCommission" type="number" min="0" max="100" step="0.1" value="10"></label><button id="saveCommission" class="primary">Provisionssatz speichern</button></div><div class="admin-stats" id="adminStats"></div><div class="admin-grid"><article class="panel"><div class="panel-head"><h3>Händler</h3><span id="merchantTotal"></span></div><div id="merchantTable" class="admin-table"></div></article><article class="panel"><div class="panel-head"><h3>Letzte Bestellungen</h3><span id="adminOrderTotal"></span></div><div id="adminOrderTable" class="admin-table"></div></article></div><div class="admin-grid admin-grid-wide"><article class="panel"><div class="panel-head"><h3>Auszahlungen</h3><span>Händlerbeträge</span></div><div id="payoutTable" class="admin-table"></div></article><article class="panel"><div class="panel-head"><h3>System</h3><span>Live</span></div><div id="adminSystem" class="admin-system"></div></article></div></div>
     </section>
   </main>
   <div id="authModal" class="modal hidden" role="dialog" aria-modal="true"><div class="modal-card"><button class="close" data-close="authModal">×</button><h2 id="authTitle">Anmelden</h2><form id="authForm"><label>E-Mail<input id="authEmail" type="email" required autocomplete="email" /></label><label>Passwort<input id="authPassword" type="password" required minlength="6" autocomplete="current-password" /></label><label id="authNameWrap" class="hidden">Shop-/Anzeigename<input id="authName" autocomplete="name" /></label><button class="primary" type="submit" id="authSubmit">Anmelden</button></form><p id="authSwitchText" class="muted"></p></div></div>
