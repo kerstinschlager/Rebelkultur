@@ -16,9 +16,9 @@
   }
   async function load(){
     const grid=document.querySelector('#merchantGrid'),count=document.querySelector('#merchantCount');
-    const {data,error}=await db.rpc('public_merchants');
+    const {data,error}=await db.from('public_merchants').select('id,shop_name,slug,status,description,logo_url,shop_url').order('shop_name',{ascending:true});
     if(error){console.error(error);grid.innerHTML='<p class="muted">Händler konnten nicht geladen werden.</p>';return}
-    const rows=(data||[]).filter(m=>m.published && m.status==='approved');
+    const rows=data||[];
     count.textContent=`${rows.length} ${rows.length===1?'Händler':'Händler'}`;
     grid.innerHTML=rows.map(m=>{
       const href=base+'shop/?shop='+encodeURIComponent(m.slug||'');
