@@ -2,7 +2,8 @@
   function q(s){return document.querySelector(s)}
   function setVal(id,v){const e=q(id);if(e)e.value=v??''}
   function escp(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]))}
-  function toastP(t){if(typeof toast==='function')toast(t);}
+  function toastP(t){if(typeof toast==='function')toast(t)}
+  function publicShopUrl(slug){return location.origin+location.pathname.replace(/[^/]+$/,'')+'shop.html?shop='+encodeURIComponent(slug||'')}
   function inject(){
     const panel=q('#dashboardSettings');
     if(!panel || q('#merchantProfileFields')) return;
@@ -20,10 +21,11 @@
         <label class="full-width">Shop-Beschreibung<textarea id="profileDescription" rows="4" placeholder="Beschreibe deinen Shop …"></textarea></label>
       </div>
       <label style="display:flex;align-items:center;gap:10px;margin-top:14px"><input id="profilePublished" type="checkbox"> Öffentlichen Händler-Shop veröffentlichen</label>
+      <div id="publicShopLinkBox" class="muted" style="margin-top:12px"></div>
       <button id="saveMerchantProfile" class="primary" type="button" style="margin-top:14px">Händlerprofil speichern</button>
       <div class="muted" style="margin-top:10px">Zahlungsdaten werden hier nicht als geheime Zugangsdaten gespeichert. Die echte Zahlungsanbindung erfolgt später über den jeweiligen Anbieter.</div>`;
     panel.appendChild(box);
-    q('#saveMerchantProfile').addEventListener('click',save);
+    q('#saveMerchantProfile').addEventListener('click',save)
   }
   async function getMerchant(){
     if(typeof db==='undefined') return null;
@@ -31,7 +33,7 @@
     const u=userData.session?.user;if(!u)return null;
     const {data,error}=await db.from('merchants').select('*').eq('owner_id',u.id).maybeSingle();
     if(error){console.error(error);return null}
-    return data||null;
+    return data||null
   }
   async function fill(){
     const m=await getMerchant();if(!m)return;
@@ -42,6 +44,11 @@
     setVal('profilePayoutEmail',m.payout_email||'');
     setVal('profileDescription',m.description||'');
     const pub=q('#profilePublished');if(pub)pub.checked=!!m.published;
+    const link=q('#publicShopLinkBox');
+    if(link && m.slug){
+      const href=publicShopUrl(m.slug);
+      link.innerHTML=`Öffentlicher Händler-Shop: <a href="${escp(href)}" target="_blank" rel="noopener">${escp(href)}</a>`;
+    }
   }
   async function save(){
     const m=await getMerchant();if(!m){toastP('Kein Händler-Shop vorhanden');return}
@@ -58,6 +65,7 @@
     if(error){toastP(error.message);return}
     if(typeof merchant!=='undefined') merchant=data;
     toastP('Händlerprofil gespeichert');
+    await fill();
   }
   const originalSetDashTab=window.setDashTab;
   window.setDashTab=function(tab){
