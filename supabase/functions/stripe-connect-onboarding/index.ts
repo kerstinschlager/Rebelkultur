@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
     );
 
     return json({
-      connected: true,
+      connected: false,
       account_id: accountId,
       url: link.url,
     });
