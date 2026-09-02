@@ -40,6 +40,8 @@ Deno.serve(async (req) => {
 
     const admin = createClient(supabaseUrl, serviceKey);
     const ids = items.map((x: any) => Number(x.product_id)).filter(Number.isInteger);
+    if (!ids.length || new Set(ids).size !== ids.length) return json({ error: "Ungültige Warenkorbpositionen" }, 400);
+
     const { data: products, error: productError } = await admin
       .from("products")
       .select("id,name,price,stock,merchant_id,active,merchants(id,shop_name,status,stripe_account_id,commission_rate)")
@@ -54,19 +56,23 @@ Deno.serve(async (req) => {
     if (!merchant || merchant.status !== "approved") return json({ error: "Dieser Händler ist noch nicht freigegeben." }, 400);
     if (!merchant.stripe_account_id) return json({ error: "Der Händler hat Stripe noch nicht verbunden." }, 400);
 
-    const lineItems: any[] = [];
     let totalCents = 0;
+    const checkoutParams = new URLSearchParams();
+    let idx = 0;
+    const orderItems: any[] = [];
     for (const p of products as any[]) {
       const rawQty = items.find((x: any) => Number(x.product_id) === p.id)?.quantity;
       const qty = Math.max(1, Math.floor(Number(rawQty) || 1));
       if (qty > p.stock) return json({ error: `${p.name}: nicht genug Bestand.` }, 400);
       const unitCents = Math.round(Number(p.price) * 100);
+      if (!Number.isFinite(unitCents) || unitCents < 1) return json({ error: `${p.name}: ungültiger Preis.` }, 400);
       totalCents += unitCents * qty;
-      lineItems.push([`line_items[${lineItems.length}][price_data][currency]`, "eur"], [`line_items[${lineItems.length - 1}][price_data][product_data][name]`, p.name]);
-      const i = lineItems.length - 2;
-      lineItems[i] = [`line_items[${i}][price_data][currency]`, "eur"];
-      lineItems[i + 1] = [`line_items[${i}][price_data][product_data][name]`, p.name];
-      lineItems.push([`line_items[${i}][price_data][unit_amount]`, String(unitCents)], [`line_items[${i}][quantity]`, String(qty)]);
+      checkoutParams.append(`line_items[${idx}][price_data][currency]`, "eur");
+      checkoutParams.append(`line_items[${idx}][price_data][product_data][name]`, p.name);
+      checkoutParams.append(`line_items[${idx}][price_data][unit_amount]`, String(unitCents));
+      checkoutParams.append(`line_items[${idx}][quantity]`, String(qty));
+      orderItems.push({ product_id: p.id, product_name: p.name, quantity: qty, unit_price: Number(p.price) });
+      idx++;
     }
 
     const commissionRate = Math.max(0, Math.min(100, Number(merchant.commission_rate) || 10));
@@ -85,20 +91,8 @@ Deno.serve(async (req) => {
     }).select("id").single();
     if (orderError) throw orderError;
 
-    const checkoutParams = new URLSearchParams();
-    let idx = 0;
-    for (const p of products as any[]) {
-      const rawQty = items.find((x: any) => Number(x.product_id) === p.id)?.quantity;
-      const qty = Math.max(1, Math.floor(Number(rawQty) || 1));
-      const unitCents = Math.round(Number(p.price) * 100);
-      checkoutParams.append(`line_items[${idx}][price_data][currency]`, "eur");
-      checkoutParams.append(`line_items[${idx}][price_data][product_data][name]`, p.name);
-      checkoutParams.append(`line_items[${idx}][price_data][unit_amount]`, String(unitCents));
-      checkoutParams.append(`line_items[${idx}][quantity]`, String(qty));
-      idx++;
-    }
     checkoutParams.append("mode", "payment");
-    checkoutParams.append("success_url", "https://kerstinschlager.github.io/Rebelkultur/#payment-success?session_id={CHECKOUT_SESSION_ID}");
+    checkoutParams.append("success_url", "https://kerstinschlager.github.io/Rebelkultur/?payment=success&session_id={CHECKOUT_SESSION_ID}#payment-success");
     checkoutParams.append("cancel_url", "https://kerstinschlager.github.io/Rebelkultur/#shop");
     checkoutParams.append("payment_intent_data[application_fee_amount]", String(commissionCents));
     checkoutParams.append("payment_intent_data[transfer_data][destination]", merchant.stripe_account_id);
@@ -109,11 +103,7 @@ Deno.serve(async (req) => {
     const session = await stripePost("checkout/sessions", checkoutParams);
     const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
     await admin.from("orders").update({ stripe_checkout_session_id: session.id, stripe_payment_intent_id: paymentIntentId }).eq("id", order.id);
-    await admin.from("order_items").insert(products.map((p: any) => {
-      const rawQty = items.find((x: any) => Number(x.product_id) === p.id)?.quantity;
-      const qty = Math.max(1, Math.floor(Number(rawQty) || 1));
-      return { order_id: order.id, product_id: p.id, product_name: p.name, quantity: qty, unit_price: Number(p.price) };
-    }));
+    await admin.from("order_items").insert(orderItems.map((item: any) => ({ ...item, order_id: order.id })));
 
     return json({ checkout_url: session.url, order_id: order.id });
   } catch (e) {
