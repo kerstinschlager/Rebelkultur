@@ -27,33 +27,82 @@
     return data||{};
   }
 
-  function injectStripeCard(){
+  async function getStripeStatus(){
+    try{
+      const data=await call('stripe-connect-onboarding',{status_only:true});
+      return {
+        connected:!!data.connected,
+        complete:data.complete===true || data.stripe_onboarding_complete===true,
+        account_id:data.account_id||data.stripe_account_id||null
+      };
+    }catch(_e){
+      return {connected:false,complete:false,account_id:null};
+    }
+  }
+
+  function renderStripeStatus(status){
+    const text=$('#stripeConnectStatus');
+    const btn=$('#stripeConnectBtn');
+    if(!text||!btn)return;
+
+    if(status.connected && status.complete){
+      text.textContent='Stripe ist verbunden und vollständig eingerichtet.';
+      btn.textContent='Stripe verbunden';
+      btn.disabled=true;
+      btn.title='Stripe ist bereits verbunden.';
+      return;
+    }
+
+    if(status.connected && !status.complete){
+      text.textContent='Stripe ist verbunden, die Händler-Verifizierung ist noch nicht vollständig abgeschlossen.';
+      btn.textContent='Stripe-Onboarding fortsetzen';
+      btn.disabled=false;
+      return;
+    }
+
+    text.textContent='Verbinde deinen Händler-Shop mit Stripe, damit Kunden online bezahlen können.';
+    btn.textContent='Stripe verbinden';
+    btn.disabled=false;
+  }
+
+  async function injectStripeCard(){
     const panel=$('#dashboardSettings');
     if(!panel||$('#stripeConnectCard'))return;
+
     const card=document.createElement('article');
     card.id='stripeConnectCard';
     card.className='panel';
     card.style.marginTop='18px';
-    card.innerHTML=`<h3>Stripe-Zahlungen</h3><p id="stripeConnectStatus" class="muted">Verbinde deinen Händler-Shop mit Stripe, damit Kunden online bezahlen können.</p><button id="stripeConnectBtn" class="primary" type="button">Stripe verbinden</button><p class="muted" style="margin-top:10px">Die Stripe-Schlüssel müssen unter Supabase → Edge Functions → Secrets hinterlegt sein. Nicht in den Browser-Code oder GitHub eintragen.</p>`;
+    card.innerHTML=`<h3>Stripe-Zahlungen</h3><p id="stripeConnectStatus" class="muted">Stripe-Status wird geprüft …</p><button id="stripeConnectBtn" class="primary" type="button">Stripe verbinden</button><p class="muted" style="margin-top:10px">Die Stripe-Schlüssel bleiben ausschließlich in Supabase Edge Functions → Secrets.</p>`;
     panel.appendChild(card);
+
+    renderStripeStatus(await getStripeStatus());
 
     $('#stripeConnectBtn').addEventListener('click',async()=>{
       try{
         $('#stripeConnectBtn').disabled=true;
         $('#stripeConnectStatus').textContent='Stripe-Verbindung wird vorbereitet …';
         const data=await call('stripe-connect-onboarding',{});
-        if(data.connected){
-          $('#stripeConnectStatus').textContent='Stripe ist bereits verbunden.';
-          $('#stripeConnectBtn').textContent='Stripe verbunden';
-        }else if(data.url){
+
+        if(data.connected && data.url){
           window.location.href=data.url;
-        }else{
-          throw new Error('Keine Stripe-Onboarding-URL erhalten.');
+          return;
         }
+
+        if(data.connected){
+          renderStripeStatus({connected:true,complete:data.complete===true});
+          return;
+        }
+
+        if(data.url){
+          window.location.href=data.url;
+          return;
+        }
+
+        throw new Error('Keine Stripe-Onboarding-URL erhalten.');
       }catch(e){
         $('#stripeConnectStatus').textContent=e.message;
         toast(e.message);
-      }finally{
         $('#stripeConnectBtn').disabled=false;
       }
     });
@@ -135,11 +184,14 @@
     }catch(e){toast(e.message)}
   }
 
-  function watch(){
-    injectStripeCard();
+  async function watch(){
+    await injectStripeCard();
     patchCheckout();
     paymentReturn();
-    setTimeout(()=>{injectStripeCard();patchCheckout()},900);
+    setTimeout(async()=>{
+      if($('#stripeConnectCard'))renderStripeStatus(await getStripeStatus());
+      patchCheckout();
+    },900);
   }
 
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',watch);else watch();
