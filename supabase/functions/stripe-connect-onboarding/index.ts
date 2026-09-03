@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY");
+const STRIPE_VERSION = "2026-08-26.dahlia";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "https://kerstinschlager.github.io",
@@ -18,57 +19,86 @@ const json = (body: unknown, status = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-async function stripeRequest(
-  method: "GET" | "POST",
-  path: string,
-  body?: unknown,
-) {
+function requireConfig() {
+  if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+    throw new Error("Supabase-Serverkonfiguration unvollständig.");
+  }
   if (!STRIPE_SECRET_KEY) {
     throw new Error("STRIPE_SECRET_KEY fehlt in Supabase.");
   }
+}
 
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
-    "Stripe-Version": "2026-08-26.preview",
-  };
+async function stripeRequest(
+  path: string,
+  options: RequestInit = {},
+) {
+  requireConfig();
 
-  const options: RequestInit = {
-    method,
-    headers,
-  };
+  const headers = new Headers(options.headers || {});
+  headers.set("Authorization", `Bearer ${STRIPE_SECRET_KEY}`);
+  headers.set("Stripe-Version", STRIPE_VERSION);
 
-  if (body !== undefined) {
-    headers["Content-Type"] = "application/json";
-    options.body = JSON.stringify(body);
-  }
+  const response = await fetch(
+    `https://api.stripe.com/v2/core/${path}`,
+    { ...options, headers },
+  );
 
-  const res = await fetch(`https://api.stripe.com/v2/core/${path}`, options);
-  const data = await res.json().catch(() => ({}));
+  const data = await response.json().catch(() => ({}));
 
-  if (!res.ok) {
+  if (!response.ok) {
     throw new Error(
-      data?.error?.message || data?.error?.code || `Stripe-Fehler (${res.status})`,
+      data?.error?.message ||
+      data?.error?.code ||
+      `Stripe-Fehler (${response.status})`,
     );
   }
 
   return data;
 }
 
-function isComplete(account: any) {
-  const merchantApplied = Array.isArray(account?.applied_configurations) &&
-    account.applied_configurations.includes("merchant");
+async function createStripeResource(
+  path: string,
+  body: Record<string, unknown>,
+  idempotencyKey?: string,
+) {
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (idempotencyKey) headers.set("Idempotency-Key", idempotencyKey);
 
-  const requirements = account?.requirements?.entries || [];
-  const blockingRequirement = requirements.some(
-    (entry: any) =>
-      entry?.minimum_deadline?.status === "currently_due" ||
-      entry?.minimum_deadline?.status === "past_due",
+  return stripeRequest(path, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(body),
+  });
+}
+
+async function getStripeAccount(accountId: string) {
+  return stripeRequest(
+    `accounts/${encodeURIComponent(accountId)}?include%5B0%5D=configuration.merchant&include%5B1%5D=requirements&include%5B2%5D=identity`,
+    { method: "GET" },
   );
+}
 
-  const cardStatus = account?.configuration?.merchant?.capabilities
-    ?.card_payments?.status;
+function accountIsComplete(account: any) {
+  const requirements = account?.requirements || {};
+  const currentlyDue = Array.isArray(requirements.currently_due)
+    ? requirements.currently_due
+    : [];
+  const pastDue = Array.isArray(requirements.past_due)
+    ? requirements.past_due
+    : [];
 
-  return merchantApplied && !blockingRequirement && cardStatus === "active";
+  const cardPaymentsStatus =
+    account?.configuration?.merchant?.capabilities?.card_payments?.status;
+
+  const hasBlockingRequirement =
+    currentlyDue.length > 0 ||
+    pastDue.length > 0;
+
+  const paymentsReady =
+    cardPaymentsStatus === undefined ||
+    cardPaymentsStatus === "active";
+
+  return !hasBlockingRequirement && paymentsReady;
 }
 
 Deno.serve(async (req) => {
@@ -81,9 +111,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-      throw new Error("Supabase-Serverkonfiguration unvollständig.");
-    }
+    requireConfig();
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader?.startsWith("Bearer ")) {
@@ -91,21 +119,24 @@ Deno.serve(async (req) => {
     }
 
     const jwt = authHeader.slice("Bearer ".length);
-    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-    const { data: userData, error: userError } = await admin.auth.getUser(jwt);
+    const admin = createClient(SUPABASE_URL!, SERVICE_ROLE_KEY!);
+
+    const { data: userData, error: userError } =
+      await admin.auth.getUser(jwt);
 
     if (userError || !userData.user) {
       return json({ error: "Ungültige Sitzung" }, 401);
     }
 
     const user = userData.user;
-
     const body = await req.json().catch(() => ({}));
     const statusOnly = body?.status_only === true;
 
     const { data: merchant, error: merchantError } = await admin
       .from("merchants")
-      .select("id,shop_name,contact_email,stripe_account_id")
+      .select(
+        "id,shop_name,contact_email,stripe_account_id,stripe_onboarding_complete,payout_method",
+      )
       .eq("owner_id", user.id)
       .maybeSingle();
 
@@ -116,7 +147,7 @@ Deno.serve(async (req) => {
 
     let accountId = merchant.stripe_account_id as string | null;
 
-    // Statusprüfung: vorhandenes Stripe-Konto direkt bei Stripe prüfen.
+    // Nur Status prüfen: niemals einen neuen Account erzeugen.
     if (statusOnly) {
       if (!accountId) {
         return json({
@@ -126,57 +157,62 @@ Deno.serve(async (req) => {
         });
       }
 
-      const account = await stripeRequest(
-        "GET",
-        `accounts/${encodeURIComponent(accountId)}?include[0]=configuration.merchant&include[1]=requirements&include[2]=identity`,
-      );
+      const account = await getStripeAccount(accountId);
+      const complete = accountIsComplete(account);
 
-      const complete = isComplete(account);
-
-      // Persistenter Status für das Händlerkonto.
-      const { error: statusError } = await admin
+      const { error: updateError } = await admin
         .from("merchants")
         .update({
-          stripe_account_id: account.id,
+          stripe_onboarding_complete: complete,
           payout_method: "Stripe",
         })
         .eq("id", merchant.id)
         .eq("owner_id", user.id);
 
-      if (statusError) throw statusError;
+      if (updateError) throw updateError;
 
       return json({
         connected: true,
         complete,
         stripe_onboarding_complete: complete,
-        account_id: account.id,
+        account_id: accountId,
       });
     }
 
-    // Neues Stripe-Konto nur erstellen, wenn noch keine Account-ID gespeichert ist.
+    // Account V2 erstellen, falls noch keiner gespeichert ist.
     if (!accountId) {
-      const account = await stripeRequest("POST", "accounts", {
-        contact_email: merchant.contact_email || user.email || undefined,
-        display_name: merchant.shop_name || "Rebelkultur Händler",
-        dashboard: "express",
-        identity: {
-          country: "de",
-        },
-        configuration: {
-          merchant: {
-            capabilities: {
-              card_payments: { requested: true },
+      const account = await createStripeResource(
+        "accounts",
+        {
+          contact_email:
+            merchant.contact_email || user.email || undefined,
+          display_name:
+            merchant.shop_name || "Rebelkultur Händler",
+          dashboard: "express",
+          identity: {
+            country: "de",
+          },
+          configuration: {
+            merchant: {
+              capabilities: {
+                card_payments: { requested: true },
+              },
             },
           },
-        },
-        defaults: {
-          responsibilities: {
-            fees_collector: "application",
-            losses_collector: "application",
+          defaults: {
+            responsibilities: {
+              fees_collector: "application",
+              losses_collector: "application",
+            },
           },
+          include: [
+            "configuration.merchant",
+            "requirements",
+            "identity",
+          ],
         },
-        include: ["configuration.merchant", "requirements", "identity"],
-      });
+        `rebelkultur-merchant-${merchant.id}`,
+      );
 
       if (!account?.id) {
         throw new Error("Stripe hat keine Account-ID zurückgegeben.");
@@ -188,6 +224,7 @@ Deno.serve(async (req) => {
         .from("merchants")
         .update({
           stripe_account_id: accountId,
+          stripe_onboarding_complete: false,
           payout_method: "Stripe",
         })
         .eq("id", merchant.id)
@@ -196,21 +233,22 @@ Deno.serve(async (req) => {
       if (updateError) throw updateError;
     }
 
-    const returnUrl = "https://kerstinschlager.github.io/Rebelkultur/#dashboard";
-    const refreshUrl = "https://kerstinschlager.github.io/Rebelkultur/#dashboard";
+    const returnUrl =
+      "https://kerstinschlager.github.io/Rebelkultur/#dashboard";
+    const refreshUrl =
+      "https://kerstinschlager.github.io/Rebelkultur/#dashboard";
 
-    const link = await stripeRequest("POST", "account_links", {
+    const link = await createStripeResource("account_links", {
       account: accountId,
       use_case: {
         type: "account_onboarding",
         account_onboarding: {
+          collection_options: {
+            fields: "eventually_due",
+          },
           configurations: ["merchant"],
           return_url: returnUrl,
           refresh_url: refreshUrl,
-          collection_options: {
-            fields: "currently_due",
-            future_requirements: "omit",
-          },
         },
       },
     });
@@ -220,14 +258,13 @@ Deno.serve(async (req) => {
     }
 
     return json({
-      connected: false,
+      connected: true,
       complete: false,
       account_id: accountId,
       url: link.url,
     });
   } catch (error) {
     console.error("stripe-connect-onboarding:", error);
-
     return json(
       {
         error:
