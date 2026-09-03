@@ -58,8 +58,8 @@ Deno.serve(async (req) => {
 
     let totalCents = 0;
     const checkoutParams = new URLSearchParams();
-    let idx = 0;
     const orderItems: any[] = [];
+    let idx = 0;
     for (const p of products as any[]) {
       const rawQty = items.find((x: any) => Number(x.product_id) === p.id)?.quantity;
       const qty = Math.max(1, Math.floor(Number(rawQty) || 1));
@@ -91,21 +91,37 @@ Deno.serve(async (req) => {
     }).select("id").single();
     if (orderError) throw orderError;
 
-    checkoutParams.append("mode", "payment");
-    checkoutParams.append("success_url", "https://kerstinschlager.github.io/Rebelkultur/?payment=success&session_id={CHECKOUT_SESSION_ID}#payment-success");
-    checkoutParams.append("cancel_url", "https://kerstinschlager.github.io/Rebelkultur/#shop");
-    checkoutParams.append("payment_intent_data[application_fee_amount]", String(commissionCents));
-    checkoutParams.append("payment_intent_data[transfer_data][destination]", merchant.stripe_account_id);
-    checkoutParams.append("metadata[order_id]", String(order.id));
-    checkoutParams.append("metadata[merchant_id]", String(merchant.id));
-    checkoutParams.append("customer_email", body.customer_email || user.email || "");
+    try {
+      checkoutParams.append("mode", "payment");
+      checkoutParams.append("success_url", "https://kerstinschlager.github.io/Rebelkultur/?payment=success&session_id={CHECKOUT_SESSION_ID}#payment-success");
+      checkoutParams.append("cancel_url", "https://kerstinschlager.github.io/Rebelkultur/#shop");
+      checkoutParams.append("payment_intent_data[application_fee_amount]", String(commissionCents));
+      checkoutParams.append("payment_intent_data[transfer_data][destination]", merchant.stripe_account_id);
+      checkoutParams.append("metadata[order_id]", String(order.id));
+      checkoutParams.append("metadata[merchant_id]", String(merchant.id));
+      checkoutParams.append("customer_email", body.customer_email || user.email || "");
 
-    const session = await stripePost("checkout/sessions", checkoutParams);
-    const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
-    await admin.from("orders").update({ stripe_checkout_session_id: session.id, stripe_payment_intent_id: paymentIntentId }).eq("id", order.id);
-    await admin.from("order_items").insert(orderItems.map((item: any) => ({ ...item, order_id: order.id })));
+      const session = await stripePost("checkout/sessions", checkoutParams);
+      const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : null;
 
-    return json({ checkout_url: session.url, order_id: order.id });
+      const { error: itemError } = await admin.from("order_items").insert(orderItems.map((item: any) => ({ ...item, order_id: order.id })));
+      if (itemError) {
+        console.error("order_items insert failed", itemError);
+        return json({ error: "Bestellung konnte nicht vorbereitet werden." }, 500);
+      }
+
+      const { error: updateError } = await admin.from("orders").update({
+        stripe_checkout_session_id: session.id,
+        stripe_payment_intent_id: paymentIntentId,
+      }).eq("id", order.id).eq("payment_status", "pending");
+      if (updateError) throw updateError;
+
+      return json({ checkout_url: session.url, order_id: order.id });
+    } catch (e) {
+      await admin.from("order_items").delete().eq("order_id", order.id);
+      await admin.from("orders").delete().eq("id", order.id).eq("payment_status", "pending");
+      throw e;
+    }
   } catch (e) {
     console.error(e);
     return json({ error: e instanceof Error ? e.message : "Unbekannter Fehler" }, 500);
