@@ -28,28 +28,25 @@ function requireConfig() {
   }
 }
 
-async function stripeRequest(
-  path: string,
-  options: RequestInit = {},
-) {
+async function stripeRequest(path: string, options: RequestInit = {}) {
   requireConfig();
 
   const headers = new Headers(options.headers || {});
   headers.set("Authorization", `Bearer ${STRIPE_SECRET_KEY}`);
   headers.set("Stripe-Version", STRIPE_VERSION);
 
-  const response = await fetch(
-    `https://api.stripe.com/v2/core/${path}`,
-    { ...options, headers },
-  );
+  const response = await fetch(`https://api.stripe.com/v2/core/${path}`, {
+    ...options,
+    headers,
+  });
 
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
     throw new Error(
       data?.error?.message ||
-      data?.error?.code ||
-      `Stripe-Fehler (${response.status})`,
+        data?.error?.code ||
+        `Stripe-Fehler (${response.status})`,
     );
   }
 
@@ -90,13 +87,9 @@ function accountIsComplete(account: any) {
   const cardPaymentsStatus =
     account?.configuration?.merchant?.capabilities?.card_payments?.status;
 
-  const hasBlockingRequirement =
-    currentlyDue.length > 0 ||
-    pastDue.length > 0;
-
+  const hasBlockingRequirement = currentlyDue.length > 0 || pastDue.length > 0;
   const paymentsReady =
-    cardPaymentsStatus === undefined ||
-    cardPaymentsStatus === "active";
+    cardPaymentsStatus === undefined || cardPaymentsStatus === "active";
 
   return !hasBlockingRequirement && paymentsReady;
 }
@@ -121,9 +114,7 @@ Deno.serve(async (req) => {
     const jwt = authHeader.slice("Bearer ".length);
     const admin = createClient(SUPABASE_URL!, SERVICE_ROLE_KEY!);
 
-    const { data: userData, error: userError } =
-      await admin.auth.getUser(jwt);
-
+    const { data: userData, error: userError } = await admin.auth.getUser(jwt);
     if (userError || !userData.user) {
       return json({ error: "Ungültige Sitzung" }, 401);
     }
@@ -141,46 +132,28 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (merchantError) throw merchantError;
-    if (!merchant) {
-      return json({ error: "Kein Händler-Shop vorhanden" }, 400);
-    }
+    if (!merchant) return json({ error: "Kein Händler-Shop vorhanden" }, 400);
 
-    let accountId = merchant.stripe_account_id as string | null;
+    const accountId = merchant.stripe_account_id as string | null;
 
-    // Nur Status prüfen: niemals einen neuen Account erzeugen.
+    // Reine Statusabfrage: niemals einen neuen Account erzeugen und
+    // Stripe darf hier den Seitenaufbau nicht blockieren.
     if (statusOnly) {
-      if (!accountId) {
-        return json({
-          connected: false,
-          complete: false,
-          account_id: null,
-        });
-      }
-
-      const account = await getStripeAccount(accountId);
-      const complete = accountIsComplete(account);
-
-      const { error: updateError } = await admin
-        .from("merchants")
-        .update({
-          stripe_onboarding_complete: complete,
-          payout_method: "Stripe",
-        })
-        .eq("id", merchant.id)
-        .eq("owner_id", user.id);
-
-      if (updateError) throw updateError;
+      const connected = !!accountId;
+      const complete = merchant.stripe_onboarding_complete === true;
 
       return json({
-        connected: true,
+        connected,
         complete,
         stripe_onboarding_complete: complete,
         account_id: accountId,
       });
     }
 
+    let activeAccountId = accountId;
+
     // Account V2 erstellen, falls noch keiner gespeichert ist.
-    if (!accountId) {
+    if (!activeAccountId) {
       const account = await createStripeResource(
         "accounts",
         {
@@ -218,12 +191,12 @@ Deno.serve(async (req) => {
         throw new Error("Stripe hat keine Account-ID zurückgegeben.");
       }
 
-      accountId = account.id;
+      activeAccountId = account.id;
 
       const { error: updateError } = await admin
         .from("merchants")
         .update({
-          stripe_account_id: accountId,
+          stripe_account_id: activeAccountId,
           stripe_onboarding_complete: false,
           payout_method: "Stripe",
         })
@@ -239,7 +212,7 @@ Deno.serve(async (req) => {
       "https://kerstinschlager.github.io/Rebelkultur/#dashboard";
 
     const link = await createStripeResource("account_links", {
-      account: accountId,
+      account: activeAccountId,
       use_case: {
         type: "account_onboarding",
         account_onboarding: {
@@ -259,8 +232,8 @@ Deno.serve(async (req) => {
 
     return json({
       connected: true,
-      complete: false,
-      account_id: accountId,
+      complete: merchant.stripe_onboarding_complete === true,
+      account_id: activeAccountId,
       url: link.url,
     });
   } catch (error) {
