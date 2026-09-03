@@ -84,14 +84,7 @@ function accountIsComplete(account: any) {
     ? requirements.past_due
     : [];
 
-  const cardPaymentsStatus =
-    account?.configuration?.merchant?.capabilities?.card_payments?.status;
-
-  const hasBlockingRequirement = currentlyDue.length > 0 || pastDue.length > 0;
-  const paymentsReady =
-    cardPaymentsStatus === undefined || cardPaymentsStatus === "active";
-
-  return !hasBlockingRequirement && paymentsReady;
+  return currentlyDue.length === 0 && pastDue.length === 0;
 }
 
 Deno.serve(async (req) => {
@@ -136,14 +129,33 @@ Deno.serve(async (req) => {
 
     const accountId = merchant.stripe_account_id as string | null;
 
-    // Reine Statusabfrage: niemals einen neuen Account erzeugen und
-    // Stripe darf hier den Seitenaufbau nicht blockieren.
+    // Status immer live bei Stripe prüfen. Dabei wird niemals ein neues Konto erzeugt.
     if (statusOnly) {
-      const connected = !!accountId;
-      const complete = merchant.stripe_onboarding_complete === true;
+      if (!accountId) {
+        return json({
+          connected: false,
+          complete: false,
+          stripe_onboarding_complete: false,
+          account_id: null,
+        });
+      }
+
+      const account = await getStripeAccount(accountId);
+      const complete = accountIsComplete(account);
+
+      const { error: updateError } = await admin
+        .from("merchants")
+        .update({
+          stripe_onboarding_complete: complete,
+          payout_method: "Stripe",
+        })
+        .eq("id", merchant.id)
+        .eq("owner_id", user.id);
+
+      if (updateError) throw updateError;
 
       return json({
-        connected,
+        connected: true,
         complete,
         stripe_onboarding_complete: complete,
         account_id: accountId,
@@ -232,7 +244,7 @@ Deno.serve(async (req) => {
 
     return json({
       connected: true,
-      complete: merchant.stripe_onboarding_complete === true,
+      complete: false,
       account_id: activeAccountId,
       url: link.url,
     });
