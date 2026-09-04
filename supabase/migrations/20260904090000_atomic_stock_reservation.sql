@@ -73,3 +73,5 @@ $$;
 
 revoke all on function public.reserve_product_stock(jsonb) from public, anon, authenticated;
 revoke all on function public.release_product_stock(jsonb) from public, anon, authenticated;
+grant execute on function public.reserve_product_stock(jsonb) to service_role;
+grant execute on function public.release_product_stock(jsonb) to service_role;
