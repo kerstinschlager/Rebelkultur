@@ -84,8 +84,6 @@ Deno.serve(async (req) => {
       return json({ error: "Warenkorb ist leer" }, 400);
     }
 
-    // Rebelkultur verwendet aktuell {id, quantity}; ältere Varianten
-    // können {product_id, quantity} senden. Beide Formate werden akzeptiert.
     const normalizedItems = rawItems
       .map((item: any) => ({
         product_id: Number(item?.product_id ?? item?.id),
@@ -141,6 +139,8 @@ Deno.serve(async (req) => {
       const cartItem = normalizedItems.find((item: any) => item.product_id === product.id);
       const quantity = cartItem?.quantity ?? 1;
 
+      // Fast validation for a useful error. The RPC below performs the
+      // authoritative atomic reservation under concurrency.
       if (quantity > Number(product.stock || 0)) {
         return json({ error: `${product.name}: nicht genug Bestand.` }, 400);
       }
@@ -152,10 +152,7 @@ Deno.serve(async (req) => {
 
       totalCents += unitCents * quantity;
 
-      checkoutParams.append(
-        `line_items[${index}][price_data][currency]`,
-        "eur",
-      );
+      checkoutParams.append(`line_items[${index}][price_data][currency]`, "eur");
       checkoutParams.append(
         `line_items[${index}][price_data][product_data][name]`,
         String(product.name),
@@ -164,10 +161,7 @@ Deno.serve(async (req) => {
         `line_items[${index}][price_data][unit_amount]`,
         String(unitCents),
       );
-      checkoutParams.append(
-        `line_items[${index}][quantity]`,
-        String(quantity),
-      );
+      checkoutParams.append(`line_items[${index}][quantity]`, String(quantity));
 
       orderItems.push({
         product_id: product.id,
@@ -205,7 +199,17 @@ Deno.serve(async (req) => {
 
     if (orderError) throw orderError;
 
+    let stockReserved = false;
+
     try {
+      // Atomic UPDATE ... WHERE stock >= quantity prevents two concurrent
+      // checkouts from selling more units than are actually available.
+      const { error: reserveError } = await admin.rpc("reserve_product_stock", {
+        p_items: normalizedItems,
+      });
+      if (reserveError) throw reserveError;
+      stockReserved = true;
+
       checkoutParams.append("mode", "payment");
       checkoutParams.append(
         "success_url",
@@ -225,16 +229,11 @@ Deno.serve(async (req) => {
       );
       checkoutParams.append("metadata[order_id]", String(order.id));
       checkoutParams.append("metadata[merchant_id]", String(merchant.id));
-      checkoutParams.append(
-        "customer_email",
-        body.customer_email || user.email || "",
-      );
+      checkoutParams.append("customer_email", body.customer_email || user.email || "");
 
       const session = await stripePost("checkout/sessions", checkoutParams);
       const paymentIntentId =
-        typeof session.payment_intent === "string"
-          ? session.payment_intent
-          : null;
+        typeof session.payment_intent === "string" ? session.payment_intent : null;
 
       const { error: itemError } = await admin
         .from("order_items")
@@ -263,6 +262,9 @@ Deno.serve(async (req) => {
         order_id: order.id,
       });
     } catch (error) {
+      if (stockReserved) {
+        await admin.rpc("release_product_stock", { p_items: normalizedItems });
+      }
       await admin.from("order_items").delete().eq("order_id", order.id);
       await admin
         .from("orders")
