@@ -6,16 +6,17 @@
   const $=s=>document.querySelector(s);
   const toast=t=>window.toast?window.toast(t):alert(t);
 
-  async function getMerchant(){
+  async function getContext(){
     const {data:{session}}=await db.auth.getSession();
     if(!session?.user)return null;
-    const {data}=await db.from('merchants').select('id,shop_name').eq('owner_id',session.user.id).maybeSingle();
-    return data||null;
+    const {data:merchant}=await db.from('merchants').select('id,shop_name').eq('owner_id',session.user.id).maybeSingle();
+    return merchant?{merchant,user:session.user}:null;
   }
 
   async function load(){
-    const merchant=await getMerchant();
-    if(!merchant)return;
+    const ctx=await getContext();
+    if(!ctx)return;
+    const {merchant,user}=ctx;
     const {data,error}=await db.from('merchant_shop_settings')
       .select('shop_name,shop_url,payment_provider,order_email')
       .eq('merchant_id',merchant.id).maybeSingle();
@@ -24,12 +25,13 @@
     $('#settingShopName').value=data?.shop_name||fallback.shopName||merchant.shop_name||'';
     $('#settingShopUrl').value=data?.shop_url||fallback.shopUrl||'';
     $('#settingPayment').value=data?.payment_provider||fallback.payment||'';
-    $('#settingOrderEmail').value=data?.order_email||fallback.orderEmail||session?.user?.email||'';
+    $('#settingOrderEmail').value=data?.order_email||fallback.orderEmail||user.email||'';
   }
 
   async function save(){
-    const merchant=await getMerchant();
-    if(!merchant)return;
+    const ctx=await getContext();
+    if(!ctx)return;
+    const {merchant}=ctx;
     const payload={
       merchant_id:merchant.id,
       shop_name:$('#settingShopName').value.trim(),
