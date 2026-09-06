@@ -32,8 +32,8 @@ Deno.serve(async req=>{
       }
     }
 
-    // Stripe keeps failed payment intents inside an open Checkout Session.
-    // Inventory therefore remains reserved until checkout.session.expired.
+    // A failed PaymentIntent can still be retried inside the same open Checkout Session.
+    // Keep the order pending and release inventory only when Stripe expires the session.
     if(event.type==='checkout.session.expired'){
       const session=event.data.object; const orderId=Number(session.metadata?.order_id);
       if(Number.isInteger(orderId)){
@@ -45,8 +45,8 @@ Deno.serve(async req=>{
     }
 
     if(event.type==='payment_intent.payment_failed'){
-      const pi=event.data.object; const order=await admin.from('orders').select('id').eq('stripe_payment_intent_id',pi.id).maybeSingle();
-      if(order.data)await admin.from('orders').update({payment_status:'failed',status:'new'}).eq('id',order.data.id).eq('payment_status','pending');
+      // Intentionally no order-state mutation here: the Checkout Session may remain open for retry.
+      console.warn('PaymentIntent failed; keeping checkout reservation pending:', event.data.object?.id);
     }
     if(event.type==='charge.refunded'){
       const charge=event.data.object; const pi=typeof charge.payment_intent==='string'?charge.payment_intent:null;
