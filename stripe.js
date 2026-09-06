@@ -46,10 +46,10 @@
     if(!text||!btn)return;
 
     if(status.connected && status.complete){
-      text.textContent='Stripe ist verbunden und vollständig eingerichtet.';
-      btn.textContent='Stripe verbunden';
-      btn.disabled=true;
-      btn.title='Stripe ist bereits verbunden.';
+      text.textContent='Stripe ist verbunden. Du kannst die Händler-Verbindung erneut prüfen oder fortsetzen.';
+      btn.textContent='Stripe-Onboarding öffnen';
+      btn.disabled=false;
+      btn.title='Stripe-Onboarding erneut öffnen.';
       return;
     }
 
@@ -57,12 +57,14 @@
       text.textContent='Stripe ist verbunden, die Händler-Verifizierung ist noch nicht vollständig abgeschlossen.';
       btn.textContent='Stripe-Onboarding fortsetzen';
       btn.disabled=false;
+      btn.title='Stripe-Onboarding fortsetzen.';
       return;
     }
 
     text.textContent='Verbinde deinen Händler-Shop mit Stripe, damit Kunden online bezahlen können.';
     btn.textContent='Stripe verbinden';
     btn.disabled=false;
+    btn.title='Stripe-Händlerkonto verbinden.';
   }
 
   async function injectStripeCard(){
