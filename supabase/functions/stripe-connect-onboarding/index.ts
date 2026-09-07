@@ -163,6 +163,7 @@ Deno.serve(async (req) => {
     }
 
     let activeAccountId = accountId;
+    let createdNow = false;
 
     // Account V2 erstellen, falls noch keiner gespeichert ist.
     if (!activeAccountId) {
@@ -204,6 +205,7 @@ Deno.serve(async (req) => {
       }
 
       activeAccountId = account.id;
+      createdNow = true;
 
       const { error: updateError } = await admin
         .from("merchants")
@@ -223,19 +225,35 @@ Deno.serve(async (req) => {
     const refreshUrl =
       "https://kerstinschlager.github.io/Rebelkultur/#dashboard";
 
+    // Bereits bestehende Accounts werden über account_update fortgesetzt.
+    // account_onboarding ist nur für einen gerade neu angelegten v2/core/account gedacht.
+    const useCase = createdNow
+      ? {
+          type: "account_onboarding",
+          account_onboarding: {
+            collection_options: {
+              fields: "eventually_due",
+            },
+            configurations: ["merchant"],
+            return_url: returnUrl,
+            refresh_url: refreshUrl,
+          },
+        }
+      : {
+          type: "account_update",
+          account_update: {
+            collection_options: {
+              fields: "eventually_due",
+            },
+            configurations: ["merchant"],
+            return_url: returnUrl,
+            refresh_url: refreshUrl,
+          },
+        };
+
     const link = await createStripeResource("account_links", {
       account: activeAccountId,
-      use_case: {
-        type: "account_onboarding",
-        account_onboarding: {
-          collection_options: {
-            fields: "eventually_due",
-          },
-          configurations: ["merchant"],
-          return_url: returnUrl,
-          refresh_url: refreshUrl,
-        },
-      },
+      use_case: useCase,
     });
 
     if (!link?.url) {
