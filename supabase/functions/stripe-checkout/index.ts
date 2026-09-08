@@ -16,6 +16,30 @@ function json(body: unknown, status = 200) {
   });
 }
 
+async function stripeGetAccount(accountId: string) {
+  const key = Deno.env.get("STRIPE_SECRET_KEY");
+  if (!key) throw new Error("STRIPE_SECRET_KEY fehlt in Supabase Edge Functions → Secrets.");
+
+  const response = await fetch(`https://api.stripe.com/v1/accounts/${encodeURIComponent(accountId)}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${key}`,
+    },
+  });
+
+  const data = await response.json().catch(() => ({}));
+
+  if (!response.ok) {
+    throw new Error(
+      data?.error?.message ||
+      data?.error?.code ||
+      `Stripe-Fehler (${response.status})`,
+    );
+  }
+
+  return data;
+}
+
 async function stripePost(path: string, params: URLSearchParams) {
   const key = Deno.env.get("STRIPE_SECRET_KEY");
   if (!key) throw new Error("STRIPE_SECRET_KEY fehlt in Supabase Edge Functions → Secrets.");
@@ -143,7 +167,18 @@ Deno.serve(async (req) => {
       return json({ error: "Der Händler hat Stripe noch nicht verbunden." }, 400);
     }
 
-    // 7. Build Stripe line items and totals from database prices only
+    // 7. Preflight the exact Stripe capability required by the destination charge below.
+    const stripeAccount = await stripeGetAccount(merchant.stripe_account_id);
+    const transfersCapability = stripeAccount?.capabilities?.transfers;
+    if (transfersCapability !== "active") {
+      return json({
+        error:
+          "Stripe ist verbunden, aber die Transfer-Funktion des Händlerkontos ist noch nicht aktiv. Bitte im Stripe-Dashboard die offenen Anforderungen abschließen und danach erneut versuchen.",
+        transfers_capability: transfersCapability || "inactive",
+      }, 409);
+    }
+
+    // 8. Build Stripe line items and totals from database prices only
     let totalCents = 0;
     const stripeParams = new URLSearchParams();
     const orderItems: any[] = [];
@@ -193,7 +228,7 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 8. Platform commission
+    // 9. Platform commission
     const commissionRate = Math.max(
       0,
       Math.min(100, Number(merchant.commission_rate) || 10),
@@ -202,7 +237,7 @@ Deno.serve(async (req) => {
       (totalCents * commissionRate) / 100,
     );
 
-    // 9. Create pending order
+    // 10. Create pending order
     const { data: order, error: orderError } = await admin
       .from("orders")
       .insert({
@@ -228,7 +263,7 @@ Deno.serve(async (req) => {
 
     createdOrderId = Number(order.id);
 
-    // 10. Reserve stock using the function installed by the SQL migration
+    // 11. Reserve stock using the function installed by the SQL migration
     const { error: reserveError } = await admin.rpc("reserve_order_stock", {
       p_order_id: order.id,
       p_items: items,
@@ -237,7 +272,7 @@ Deno.serve(async (req) => {
     if (reserveError) throw reserveError;
     stockReserved = true;
 
-    // 11. Save order items
+    // 12. Save order items
     const { error: itemError } = await admin
       .from("order_items")
       .insert(orderItems.map((item: any) => ({
@@ -247,7 +282,7 @@ Deno.serve(async (req) => {
 
     if (itemError) throw itemError;
 
-    // 12. Stripe Checkout session
+    // 13. Stripe Checkout session
     stripeParams.append("mode", "payment");
     stripeParams.append(
       "success_url",
@@ -279,7 +314,7 @@ Deno.serve(async (req) => {
     const session = await stripePost("checkout/sessions", stripeParams);
     stripeSessionId = typeof session.id === "string" ? session.id : null;
 
-    // 13. Store Stripe identifiers
+    // 14. Store Stripe identifiers
     const paymentIntentId =
       typeof session.payment_intent === "string"
         ? session.payment_intent
@@ -296,7 +331,7 @@ Deno.serve(async (req) => {
 
     if (updateError) throw updateError;
 
-    // 14. Return checkout URL
+    // 15. Return checkout URL
     return json({
       checkout_url: session.url,
       order_id: order.id,
