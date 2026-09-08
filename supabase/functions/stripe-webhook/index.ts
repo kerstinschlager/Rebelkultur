@@ -22,6 +22,17 @@ Deno.serve(async req=>{
     const event=JSON.parse(payload); const admin=createClient(url,serviceKey);
     if(!event.id)return new Response('Missing event id',{status:400});
 
+    // Stripe retries webhook deliveries. Ignore an event that was already completed.
+    const { data: existingEvent, error: eventLookupError } = await admin
+      .from('stripe_webhook_events')
+      .select('event_id')
+      .eq('event_id', event.id)
+      .maybeSingle();
+    if(eventLookupError)throw eventLookupError;
+    if(existingEvent?.event_id){
+      return new Response(JSON.stringify({received:true,event_id:event.id,duplicate:true}),{status:200,headers:{'Content-Type':'application/json'}});
+    }
+
     if(event.type==='checkout.session.completed'){
       const session=event.data.object; const orderId=Number(session.metadata?.order_id);
       if(Number.isInteger(orderId)){
@@ -50,8 +61,22 @@ Deno.serve(async req=>{
     }
     if(event.type==='charge.refunded'){
       const charge=event.data.object; const pi=typeof charge.payment_intent==='string'?charge.payment_intent:null;
-      if(pi)await admin.from('orders').update({payment_status:'refunded',status:'refunded'}).eq('stripe_payment_intent_id',pi).in('payment_status',['paid','pending']);
+      if(pi){
+        const { error } = await admin.from('orders').update({payment_status:'refunded',status:'refunded'}).eq('stripe_payment_intent_id',pi).in('payment_status',['paid','pending']);
+        if(error)throw error;
+      }
     }
+
+    // Record only after all event handling succeeded, so a failed delivery remains retryable.
+    const { error: recordError } = await admin.from('stripe_webhook_events').insert({event_id:event.id,event_type:event.type});
+    if(recordError){
+      // A concurrent duplicate may have inserted the same event after our initial lookup.
+      if(recordError.code==='23505'){
+        return new Response(JSON.stringify({received:true,event_id:event.id,duplicate:true}),{status:200,headers:{'Content-Type':'application/json'}});
+      }
+      throw recordError;
+    }
+
     return new Response(JSON.stringify({received:true,event_id:event.id}),{status:200,headers:{'Content-Type':'application/json'}});
   }catch(e){console.error(e);return new Response('Webhook error',{status:500})}
 });
