@@ -87,6 +87,20 @@ function accountIsComplete(account: any) {
   return currentlyDue.length === 0 && pastDue.length === 0;
 }
 
+function getAppliedConfigurations(account: any): string[] {
+  const applied = Array.isArray(account?.applied_configurations)
+    ? account.applied_configurations.filter((value: unknown) =>
+        ["customer", "merchant", "recipient", "storer"].includes(String(value)),
+      )
+    : [];
+
+  if (applied.length > 0) return applied;
+
+  // Fallback für ältere/ungewöhnliche Antworten: dieser Händler wurde mit
+  // der Merchant-Konfiguration erstellt.
+  return ["merchant"];
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -225,8 +239,15 @@ Deno.serve(async (req) => {
     const refreshUrl =
       "https://kerstinschlager.github.io/Rebelkultur/#dashboard";
 
-    // Bereits bestehende Accounts werden über account_update fortgesetzt.
-    // account_onboarding ist nur für einen gerade neu angelegten v2/core/account gedacht.
+    // Für bestehende Accounts müssen die angeforderten Konfigurationen exakt
+    // den bereits auf dem Account angewendeten Konfigurationen entsprechen.
+    const existingAccount = createdNow
+      ? null
+      : await getStripeAccount(activeAccountId!);
+    const configurations = createdNow
+      ? ["merchant"]
+      : getAppliedConfigurations(existingAccount);
+
     const useCase = createdNow
       ? {
           type: "account_onboarding",
@@ -234,7 +255,7 @@ Deno.serve(async (req) => {
             collection_options: {
               fields: "eventually_due",
             },
-            configurations: ["merchant"],
+            configurations,
             return_url: returnUrl,
             refresh_url: refreshUrl,
           },
@@ -245,7 +266,7 @@ Deno.serve(async (req) => {
             collection_options: {
               fields: "eventually_due",
             },
-            configurations: ["merchant"],
+            configurations,
             return_url: returnUrl,
             refresh_url: refreshUrl,
           },
@@ -264,6 +285,7 @@ Deno.serve(async (req) => {
       connected: true,
       complete: false,
       account_id: activeAccountId,
+      configurations,
       url: link.url,
     });
   } catch (error) {
