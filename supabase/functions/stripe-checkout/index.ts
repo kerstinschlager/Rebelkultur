@@ -62,6 +62,7 @@ Deno.serve(async (req) => {
   let createdOrderId: number | null = null;
   let stockReserved = false;
   let stripeSessionId: string | null = null;
+  let admin: ReturnType<typeof createClient> | null = null;
 
   try {
     const authorization = req.headers.get("Authorization");
@@ -89,7 +90,7 @@ Deno.serve(async (req) => {
       return json({ error: "Ungültige Warenkorbpositionen" }, 400);
     }
 
-    const admin = createClient(supabaseUrl, serviceRoleKey);
+    admin = createClient(supabaseUrl, serviceRoleKey);
     const ids = items.map((item: any) => item.product_id);
     const { data: products, error: productError } = await admin
       .from("products")
@@ -105,7 +106,6 @@ Deno.serve(async (req) => {
     if (merchant.status !== "approved") return json({ error: "Dieser Händler ist noch nicht freigegeben." }, 400);
     if (!merchant.stripe_account_id) return json({ error: "Der Händler hat Stripe noch nicht verbunden." }, 400);
 
-    // Accounts v2 destination charges require the recipient stripe_transfers capability.
     const v2Account = await stripeGetV2Account(merchant.stripe_account_id);
     const recipientTransfers = v2Account?.configuration?.recipient?.capabilities?.stripe_balance?.stripe_transfers?.status;
     const isV2Account = v2Account?.object === "v2.core.account";
@@ -145,16 +145,18 @@ Deno.serve(async (req) => {
     const commissionRate = Math.max(0, Math.min(100, Number(merchant.commission_rate) || 10));
     const commissionCents = Math.round((totalCents * commissionRate) / 100);
 
+    // The orders table stores the merchant relation via merchant_id. It does not have shop_name or stripe_account_id columns.
     const { data: order, error: orderError } = await admin.from("orders").insert({
       customer_id: user.id,
       customer_name: body.customer_name || user.user_metadata?.display_name || user.email?.split("@")[0] || null,
       customer_email: body.customer_email || user.email || null,
       shipping_address: body.shipping_address || null,
       merchant_id: merchant.id,
-      shop_name: merchant.shop_name || null,
-      stripe_account_id: merchant.stripe_account_id,
-      status: "new", payment_status: "pending",
-      total: totalCents / 100, commission_amount: commissionCents / 100, merchant_amount: (totalCents - commissionCents) / 100,
+      status: "new",
+      payment_status: "pending",
+      total: totalCents / 100,
+      commission_amount: commissionCents / 100,
+      merchant_amount: (totalCents - commissionCents) / 100,
     }).select("id").single();
     if (orderError) throw orderError;
     if (!order?.id) throw new Error("Bestellung konnte nicht angelegt werden.");
@@ -173,7 +175,6 @@ Deno.serve(async (req) => {
     stripeParams.append("customer_email", body.customer_email || user.email || "");
     stripeParams.append("payment_intent_data[application_fee_amount]", String(commissionCents));
     stripeParams.append("payment_intent_data[transfer_data][destination]", String(merchant.stripe_account_id));
-    // Required for Accounts v2 destination charges: make the connected account the settlement merchant.
     stripeParams.append("payment_intent_data[on_behalf_of]", String(merchant.stripe_account_id));
     stripeParams.append("metadata[order_id]", String(order.id));
     stripeParams.append("metadata[merchant_id]", String(merchant.id));
@@ -194,10 +195,10 @@ Deno.serve(async (req) => {
     if (stripeSessionId) {
       try { await stripePost(`checkout/sessions/${stripeSessionId}/expire`, new URLSearchParams()); } catch (expireError) { console.error("Stripe session expire:", expireError); }
     }
-    if (stockReserved) {
+    if (stockReserved && admin) {
       try { await admin.rpc("release_order_stock", { p_order_id: createdOrderId }); } catch (releaseError) { console.error("release_order_stock:", releaseError); }
     }
-    if (createdOrderId) {
+    if (createdOrderId && admin) {
       try { await admin.from("order_items").delete().eq("order_id", createdOrderId); } catch (cleanupError) { console.error("order_items cleanup:", cleanupError); }
       try { await admin.from("orders").delete().eq("id", createdOrderId).eq("payment_status", "pending"); } catch (cleanupError) { console.error("orders cleanup:", cleanupError); }
     }
