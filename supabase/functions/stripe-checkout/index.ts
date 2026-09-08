@@ -27,7 +27,11 @@ async function stripeGetV1Account(accountId: string) {
 async function stripeGetV2Account(accountId: string) {
   const key = Deno.env.get("STRIPE_SECRET_KEY");
   if (!key) throw new Error("STRIPE_SECRET_KEY fehlt in Supabase Edge Functions → Secrets.");
-  const response = await fetch(`https://api.stripe.com/v2/core/accounts/${encodeURIComponent(accountId)}?include%5B0%5D=configuration.recipient&include%5B1%5D=configuration.merchant&include%5B2%5D=requirements`, {
+  const params = new URLSearchParams();
+  params.set("include[0]", "configuration.recipient");
+  params.set("include[1]", "configuration.merchant");
+  params.set("include[2]", "requirements");
+  const response = await fetch(`https://api.stripe.com/v2/core/accounts/${encodeURIComponent(accountId)}?${params.toString()}`, {
     headers: {
       Authorization: `Bearer ${key}`,
       "Stripe-Version": "2026-08-26.dahlia",
