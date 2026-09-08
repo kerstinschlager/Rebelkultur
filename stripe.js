@@ -46,18 +46,18 @@
     if(!text||!btn)return;
 
     if(status.connected && status.complete){
-      text.textContent='Stripe ist verbunden. Du kannst die Händler-Verbindung erneut prüfen oder fortsetzen.';
-      btn.textContent='Stripe-Onboarding öffnen';
+      text.textContent='Stripe ist verbunden und vollständig eingerichtet.';
+      btn.textContent='Stripe-Dashboard öffnen';
       btn.disabled=false;
-      btn.title='Stripe-Onboarding erneut öffnen.';
+      btn.title='Stripe Express-Dashboard öffnen.';
       return;
     }
 
     if(status.connected && !status.complete){
-      text.textContent='Stripe ist verbunden, die Händler-Verifizierung ist noch nicht vollständig abgeschlossen.';
-      btn.textContent='Stripe-Onboarding fortsetzen';
+      text.textContent='Stripe ist verbunden. Offene Live-Anforderungen werden im Stripe-Dashboard vervollständigt.';
+      btn.textContent='Stripe-Dashboard öffnen';
       btn.disabled=false;
-      btn.title='Stripe-Onboarding fortsetzen.';
+      btn.title='Stripe Express-Dashboard öffnen und Anforderungen vervollständigen.';
       return;
     }
 
@@ -101,7 +101,7 @@
           return;
         }
 
-        throw new Error('Keine Stripe-Onboarding-URL erhalten.');
+        throw new Error('Kein Stripe-Link erhalten.');
       }catch(e){
         $('#stripeConnectStatus').textContent=e.message;
         toast(e.message);
