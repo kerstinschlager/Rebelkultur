@@ -43,11 +43,12 @@ async function stripeRequest(path: string, options: RequestInit = {}) {
   const data = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(
-      data?.error?.message ||
-        data?.error?.code ||
-        `Stripe-Fehler (${response.status})`,
+    const error = data?.error || {};
+    const err = new Error(
+      error?.message || error?.code || `Stripe-Fehler (${response.status})`,
     );
+    (err as any).stripeCode = error?.code;
+    throw err;
   }
 
   return data;
@@ -70,7 +71,7 @@ async function createStripeResource(
 
 async function getStripeAccount(accountId: string) {
   return stripeRequest(
-    `accounts/${encodeURIComponent(accountId)}?include%5B0%5D=configuration.merchant&include%5B1%5D=requirements&include%5B2%5D=identity`,
+    `accounts/${encodeURIComponent(accountId)}?include%5B0%5D=configuration.merchant&include%5B1%5D=configuration.recipient&include%5B2%5D=requirements&include%5B3%5D=identity`,
     { method: "GET" },
   );
 }
@@ -87,18 +88,81 @@ function accountIsComplete(account: any) {
   return currentlyDue.length === 0 && pastDue.length === 0;
 }
 
-function getAppliedConfigurations(account: any): string[] {
-  const applied = Array.isArray(account?.applied_configurations)
-    ? account.applied_configurations.filter((value: unknown) =>
-        ["customer", "merchant", "recipient", "storer"].includes(String(value)),
-      )
-    : [];
+function normalizedConfigurations(values: unknown): string[] {
+  if (!Array.isArray(values)) return [];
+  return values.filter((value: unknown) =>
+    ["customer", "merchant", "recipient", "storer"].includes(String(value)),
+  );
+}
 
-  if (applied.length > 0) return applied;
+function uniqueConfigurationSets(sets: string[][]): string[][] {
+  const seen = new Set<string>();
+  const result: string[][] = [];
 
-  // Fallback für ältere/ungewöhnliche Antworten: dieser Händler wurde mit
-  // der Merchant-Konfiguration erstellt.
-  return ["merchant"];
+  for (const set of sets) {
+    const normalized = [...new Set(set)].sort();
+    if (!normalized.length) continue;
+    const key = normalized.join(",");
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(normalized);
+  }
+
+  return result;
+}
+
+async function createExistingAccountUpdateLink(
+  accountId: string,
+  account: any,
+  returnUrl: string,
+  refreshUrl: string,
+) {
+  const applied = normalizedConfigurations(account?.applied_configurations);
+
+  // Stripe requires account_links to use exactly the configuration(s) that
+  // are applied to the v2 account. We therefore try the reported set first
+  // and then safe combinations as a fallback for accounts where the GET
+  // response omits applied_configurations.
+  const candidates = uniqueConfigurationSets([
+    applied,
+    ["merchant"],
+    ["merchant", "recipient"],
+    ["recipient"],
+  ]);
+
+  let lastError: unknown = null;
+
+  for (const configurations of candidates) {
+    try {
+      const link = await createStripeResource("account_links", {
+        account: accountId,
+        use_case: {
+          type: "account_update",
+          account_update: {
+            collection_options: {
+              fields: "eventually_due",
+            },
+            configurations,
+            return_url: returnUrl,
+            refresh_url: refreshUrl,
+          },
+        },
+      });
+
+      if (link?.url) {
+        return { link, configurations };
+      }
+
+      throw new Error("Stripe hat keine Onboarding-URL zurückgegeben.");
+    } catch (error) {
+      lastError = error;
+      if ((error as any)?.stripeCode !== "configs_must_match_to_use_account_links") {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError || new Error("Passende Stripe-Konfiguration für das Konto nicht gefunden.");
 }
 
 Deno.serve(async (req) => {
@@ -143,7 +207,6 @@ Deno.serve(async (req) => {
 
     const accountId = merchant.stripe_account_id as string | null;
 
-    // Status immer live bei Stripe prüfen. Dabei wird niemals ein neues Konto erzeugt.
     if (statusOnly) {
       if (!accountId) {
         return json({
@@ -179,7 +242,6 @@ Deno.serve(async (req) => {
     let activeAccountId = accountId;
     let createdNow = false;
 
-    // Account V2 erstellen, falls noch keiner gespeichert ist.
     if (!activeAccountId) {
       const account = await createStripeResource(
         "accounts",
@@ -239,17 +301,14 @@ Deno.serve(async (req) => {
     const refreshUrl =
       "https://kerstinschlager.github.io/Rebelkultur/#dashboard";
 
-    // Für bestehende Accounts müssen die angeforderten Konfigurationen exakt
-    // den bereits auf dem Account angewendeten Konfigurationen entsprechen.
-    const existingAccount = createdNow
-      ? null
-      : await getStripeAccount(activeAccountId!);
-    const configurations = createdNow
-      ? ["merchant"]
-      : getAppliedConfigurations(existingAccount);
+    let link: any;
+    let configurations: string[];
 
-    const useCase = createdNow
-      ? {
+    if (createdNow) {
+      configurations = ["merchant"];
+      link = await createStripeResource("account_links", {
+        account: activeAccountId,
+        use_case: {
           type: "account_onboarding",
           account_onboarding: {
             collection_options: {
@@ -259,23 +318,19 @@ Deno.serve(async (req) => {
             return_url: returnUrl,
             refresh_url: refreshUrl,
           },
-        }
-      : {
-          type: "account_update",
-          account_update: {
-            collection_options: {
-              fields: "eventually_due",
-            },
-            configurations,
-            return_url: returnUrl,
-            refresh_url: refreshUrl,
-          },
-        };
-
-    const link = await createStripeResource("account_links", {
-      account: activeAccountId,
-      use_case: useCase,
-    });
+        },
+      });
+    } else {
+      const account = await getStripeAccount(activeAccountId!);
+      const result = await createExistingAccountUpdateLink(
+        activeAccountId!,
+        account,
+        returnUrl,
+        refreshUrl,
+      );
+      link = result.link;
+      configurations = result.configurations;
+    }
 
     if (!link?.url) {
       throw new Error("Stripe hat keine Onboarding-URL zurückgegeben.");
