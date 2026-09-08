@@ -40,9 +40,22 @@
     }
   }
 
+  function syncPaymentProvider(status){
+    const select=$('#settingPayment');
+    if(!select)return;
+    if(status.connected && status.complete){
+      const stripeOption=[...select.options].find(o=>String(o.value).toLowerCase()==='stripe' || String(o.textContent).toLowerCase()==='stripe');
+      if(stripeOption){
+        select.value=stripeOption.value;
+        select.dataset.stripeConnected='true';
+      }
+    }
+  }
+
   function renderStripeStatus(status){
     const text=$('#stripeConnectStatus');
     const btn=$('#stripeConnectBtn');
+    syncPaymentProvider(status);
     if(!text||!btn)return;
 
     if(status.connected && status.complete){
