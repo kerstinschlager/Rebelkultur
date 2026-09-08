@@ -150,6 +150,9 @@ Deno.serve(async (req) => {
       customer_name: body.customer_name || user.user_metadata?.display_name || user.email?.split("@")[0] || null,
       customer_email: body.customer_email || user.email || null,
       shipping_address: body.shipping_address || null,
+      merchant_id: merchant.id,
+      shop_name: merchant.shop_name || null,
+      stripe_account_id: merchant.stripe_account_id,
       status: "new", payment_status: "pending",
       total: totalCents / 100, commission_amount: commissionCents / 100, merchant_amount: (totalCents - commissionCents) / 100,
     }).select("id").single();
