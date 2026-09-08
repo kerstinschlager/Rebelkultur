@@ -1,5 +1,5 @@
 (function(){
-  const URL='https://oansbivkjczjbtxaknks.supabase.co';
+  const URL='https://oansbivjkczjbtxaknks.supabase.co';
   const KEY='sb_publishable_9tDZPZ9KmCjHZqVXBmO-1g_8Aqpu8qE';
   const db=window.supabase.createClient(URL,KEY);
   const $=s=>document.querySelector(s);
@@ -27,28 +27,38 @@
     return data||{};
   }
 
+  async function callWithTimeout(name,body,ms=15000){
+    return await Promise.race([
+      call(name,body),
+      new Promise((_,reject)=>setTimeout(()=>reject(new Error('Stripe antwortet gerade nicht. Bitte erneut versuchen.')),ms))
+    ]);
+  }
+
   async function getStripeStatus(){
     try{
-      const data=await call('stripe-connect-onboarding',{status_only:true});
+      const data=await callWithTimeout('stripe-connect-onboarding',{status_only:true});
       return {
         connected:!!data.connected,
         complete:data.complete===true || data.stripe_onboarding_complete===true,
         account_id:data.account_id||data.stripe_account_id||null
       };
-    }catch(_e){
-      return {connected:false,complete:false,account_id:null};
+    }catch(e){
+      return {connected:false,complete:false,account_id:null,error:e.message||'Stripe-Status konnte nicht geprüft werden.'};
     }
   }
 
   function syncPaymentProvider(status){
     const select=$('#settingPayment');
     if(!select)return;
-    if(status.connected && status.complete){
-      const stripeOption=[...select.options].find(o=>String(o.value).toLowerCase()==='stripe' || String(o.textContent).toLowerCase()==='stripe');
-      if(stripeOption){
-        select.value=stripeOption.value;
-        select.dataset.stripeConnected='true';
-      }
+    const stripeOption=[...select.options].find(o=>String(o.value).toLowerCase()==='stripe' || String(o.textContent).toLowerCase()==='stripe');
+    if(!stripeOption)return;
+
+    // Sobald ein Stripe-Konto existiert, ist Stripe der gewählte Anbieter.
+    // Die Vollständigkeit des Onboardings wird separat angezeigt.
+    if(status.connected){
+      select.value=stripeOption.value;
+      select.dataset.stripeConnected='true';
+      select.dataset.stripeComplete=status.complete?'true':'false';
     }
   }
 
@@ -57,6 +67,14 @@
     const btn=$('#stripeConnectBtn');
     syncPaymentProvider(status);
     if(!text||!btn)return;
+
+    if(status.error){
+      text.textContent='Stripe-Status konnte nicht geladen werden: '+status.error;
+      btn.textContent='Stripe erneut prüfen';
+      btn.disabled=false;
+      btn.title='Stripe-Verbindung erneut prüfen.';
+      return;
+    }
 
     if(status.connected && status.complete){
       text.textContent='Stripe ist verbunden und vollständig eingerichtet.';
@@ -67,10 +85,10 @@
     }
 
     if(status.connected && !status.complete){
-      text.textContent='Stripe ist verbunden. Offene Live-Anforderungen werden im Stripe-Dashboard vervollständigt.';
-      btn.textContent='Stripe-Dashboard öffnen';
+      text.textContent='Stripe ist verbunden. Das Stripe-Onboarding ist noch nicht abgeschlossen.';
+      btn.textContent='Stripe-Onboarding fortsetzen';
       btn.disabled=false;
-      btn.title='Stripe Express-Dashboard öffnen und Anforderungen vervollständigen.';
+      btn.title='Stripe-Onboarding öffnen und offene Anforderungen vervollständigen.';
       return;
     }
 
@@ -94,10 +112,12 @@
     renderStripeStatus(await getStripeStatus());
 
     $('#stripeConnectBtn').addEventListener('click',async()=>{
+      const btn=$('#stripeConnectBtn');
+      const text=$('#stripeConnectStatus');
       try{
-        $('#stripeConnectBtn').disabled=true;
-        $('#stripeConnectStatus').textContent='Stripe-Verbindung wird vorbereitet …';
-        const data=await call('stripe-connect-onboarding',{});
+        btn.disabled=true;
+        text.textContent='Stripe-Verbindung wird geprüft …';
+        const data=await callWithTimeout('stripe-connect-onboarding',{},20000);
 
         if(data.connected && data.url){
           window.location.href=data.url;
@@ -116,9 +136,9 @@
 
         throw new Error('Kein Stripe-Link erhalten.');
       }catch(e){
-        $('#stripeConnectStatus').textContent=e.message;
-        toast(e.message);
-        $('#stripeConnectBtn').disabled=false;
+        text.textContent=e.message||'Stripe konnte nicht gestartet werden.';
+        toast(text.textContent);
+        btn.disabled=false;
       }
     });
   }
