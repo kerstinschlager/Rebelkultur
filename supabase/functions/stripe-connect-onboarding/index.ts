@@ -74,6 +74,21 @@ function accountIsComplete(account: any) {
   return currentlyDue.length === 0 && pastDue.length === 0;
 }
 
+async function createOnboardingLink(accountId: string) {
+  return createStripeResource("account_links", {
+    account: accountId,
+    use_case: {
+      type: "account_onboarding",
+      account_onboarding: {
+        collection_options: { fields: "eventually_due" },
+        configurations: ["merchant"],
+        return_url: "https://kerstinschlager.github.io/Rebelkultur/#dashboard",
+        refresh_url: "https://kerstinschlager.github.io/Rebelkultur/#dashboard",
+      },
+    },
+  });
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -171,30 +186,35 @@ Deno.serve(async (req) => {
       if (updateError) throw updateError;
     }
 
-    const returnUrl = "https://kerstinschlager.github.io/Rebelkultur/#dashboard";
-    const refreshUrl = returnUrl;
+    // Prüfen, ob das bestehende Konto bereits vollständig eingerichtet ist.
+    // Bei einem noch nicht abgeschlossenen Konto darf kein Express-Login-Link
+    // erzeugt werden; Stripe verlangt stattdessen einen Account-Onboarding-Link.
+    if (!createdNow) {
+      const account = await getStripeAccount(activeAccountId!);
+      const complete = accountIsComplete(account);
+
+      if (!complete) {
+        const link = await createOnboardingLink(activeAccountId!);
+        if (!link?.url) throw new Error("Stripe hat keinen Onboarding-Link zurückgegeben.");
+        return json({
+          connected: true,
+          complete: false,
+          account_id: activeAccountId,
+          url: link.url,
+          mode: "onboarding",
+        });
+      }
+    }
 
     // Neues V2-Konto: Account-Link für das erste Onboarding.
     if (createdNow) {
-      const link = await createStripeResource("account_links", {
-        account: activeAccountId,
-        use_case: {
-          type: "account_onboarding",
-          account_onboarding: {
-            collection_options: { fields: "eventually_due" },
-            configurations: ["merchant"],
-            return_url: returnUrl,
-            refresh_url: refreshUrl,
-          },
-        },
-      });
+      const link = await createOnboardingLink(activeAccountId!);
 
       if (!link?.url) throw new Error("Stripe hat keine Onboarding-URL zurückgegeben.");
       return json({ connected: true, complete: false, account_id: activeAccountId, url: link.url, mode: "onboarding" });
     }
 
-    // Bestehendes Express-Konto: Login-Link zum Express-Dashboard verwenden.
-    // Dort können die offenen Live-Anforderungen sicher vervollständigt werden.
+    // Vollständig eingerichtetes Express-Konto: Login-Link zum Dashboard.
     const loginLink = await stripeRequest(
       `accounts/${encodeURIComponent(activeAccountId!)}/login_links`,
       { method: "POST" },
@@ -205,7 +225,7 @@ Deno.serve(async (req) => {
 
     return json({
       connected: true,
-      complete: false,
+      complete: true,
       account_id: activeAccountId,
       url: loginLink.url,
       mode: "express_dashboard",
