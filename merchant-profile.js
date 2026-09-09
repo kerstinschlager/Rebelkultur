@@ -32,7 +32,7 @@
     const {data:userData}=await db.auth.getSession();
     const u=userData.session?.user;if(!u)return null;
     const {data,error}=await db.from('merchants').select('*').eq('owner_id',u.id).maybeSingle();
-    if(error){console.error(error);return null}
+    if(error){console.error('merchant profile load',error);return null}
     return data||null
   }
   async function fill(){
@@ -52,27 +52,27 @@
   }
   async function save(){
     const m=await getMerchant();if(!m){toastP('Kein Händler-Shop vorhanden');return}
-    const payload={
-      shop_name:(q('#settingShopName')?.value||m.shop_name||'').trim(),
-      description:(q('#profileDescription')?.value||'').trim()||null,
-      logo_url:(q('#profileLogoUrl')?.value||'').trim()||null,
-      shop_url:(q('#profileShopUrl')?.value||'').trim()||null,
-      contact_email:(q('#profileContactEmail')?.value||'').trim()||null,
-      payout_method:q('#profilePayoutMethod')?.value||null,
-      payout_email:(q('#profilePayoutEmail')?.value||'').trim()||null,
-      published:!!q('#profilePublished')?.checked
+    const args={
+      p_shop_name:(q('#settingShopName')?.value||m.shop_name||'').trim(),
+      p_description:(q('#profileDescription')?.value||'').trim()||null,
+      p_logo_url:(q('#profileLogoUrl')?.value||'').trim()||null,
+      p_shop_url:(q('#profileShopUrl')?.value||'').trim()||null,
+      p_contact_email:(q('#profileContactEmail')?.value||'').trim()||null,
+      p_payout_method:q('#profilePayoutMethod')?.value||null,
+      p_payout_email:(q('#profilePayoutEmail')?.value||'').trim()||null,
+      p_published:!!q('#profilePublished')?.checked
     };
-    const {data,error}=await db.from('merchants').update(payload).eq('id',m.id).eq('owner_id',m.owner_id).select('*').single();
+    const {data,error}=await db.rpc('merchant_update_profile',args);
     if(error){console.error('merchant profile save',error);toastP('Speichern fehlgeschlagen: '+error.message);return}
-    if(typeof merchant!=='undefined') merchant=data;
+    if(data && typeof merchant!=='undefined') merchant=data;
     toastP('Händlerprofil gespeichert');
     await fill();
   }
   const originalSetDashTab=window.setDashTab;
   window.setDashTab=function(tab){
     const r=originalSetDashTab.apply(this,arguments);
-    if(tab==='settings')setTimeout(()=>{inject();fill()},60);
+    if(tab==='settings')setTimeout(()=>{inject();fill()},200);
     return r;
   };
-  setTimeout(inject,500);
+  setTimeout(()=>{inject();fill()},800);
 })();
