@@ -53,19 +53,25 @@
   async function save(){
     const m=await getMerchant();if(!m){toastP('Kein Händler-Shop vorhanden');return}
     const values={
-      shop_name:(q('#settingShopName')?.value||m.shop_name||'').trim(),
-      description:(q('#profileDescription')?.value||'').trim()||null,
-      logo_url:(q('#profileLogoUrl')?.value||'').trim()||null,
-      shop_url:(q('#profileShopUrl')?.value||'').trim()||null,
-      contact_email:(q('#profileContactEmail')?.value||'').trim()||null,
-      payout_method:q('#profilePayoutMethod')?.value||null,
-      payout_email:(q('#profilePayoutEmail')?.value||'').trim()||null,
-      published:!!q('#profilePublished')?.checked
+      p_shop_name:(q('#settingShopName')?.value||m.shop_name||'').trim(),
+      p_description:(q('#profileDescription')?.value||'').trim(),
+      p_logo_url:(q('#profileLogoUrl')?.value||'').trim(),
+      p_shop_url:(q('#profileShopUrl')?.value||'').trim(),
+      p_contact_email:(q('#profileContactEmail')?.value||'').trim(),
+      p_payout_method:q('#profilePayoutMethod')?.value||'',
+      p_payout_email:(q('#profilePayoutEmail')?.value||'').trim(),
+      p_published:!!q('#profilePublished')?.checked
     };
-    const {error}=await db.from('merchants').update(values).eq('id',m.id).eq('owner_id',m.owner_id);
-    if(error){console.error('merchant profile save',error);toastP('Speichern fehlgeschlagen: '+error.message);return}
-    const {data:verified,error:verifyError}=await db.from('merchants').select('*').eq('id',m.id).maybeSingle();
-    if(verifyError||!verified){console.error('merchant profile verify',verifyError);toastP('Speichern konnte nicht bestätigt werden');return}
+    const {data:verified,error}=await db.rpc('merchant_update_profile',values).maybeSingle();
+    if(error){
+      console.error('merchant profile save',error);
+      toastP('Speichern fehlgeschlagen: '+error.message);
+      return;
+    }
+    if(!verified){
+      toastP('Speichern konnte nicht bestätigt werden');
+      return;
+    }
     if(typeof merchant!=='undefined') merchant=verified;
     toastP('Händlerprofil gespeichert');
     await fill();
