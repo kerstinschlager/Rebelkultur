@@ -8,9 +8,10 @@
     const header=document.querySelector('.header-actions'); if(!header||q('#accountBtn'))return;
     const b=document.createElement('button');b.id='accountBtn';b.className='cart-btn';b.textContent='Mein Konto';header.insertBefore(b,q('#authBtn'));b.addEventListener('click',openAccount);
     const s=document.createElement('section');s.id='accountView';s.className='view hidden';
-    s.innerHTML='<div class="page-head"><div><p class="eyebrow">KUNDENKONTO</p><h2>Mein Konto</h2><p>Deine Bestellungen, Versandstatus und Benachrichtigungen.</p></div></div><div class="panel" id="customerNotificationsPanel"><div class="panel-head"><h3>Benachrichtigungen</h3><span id="customerNotificationCount"></span></div><div id="customerNotifications"><p class="muted">Wird geladen …</p></div></div><div class="panel" id="customerOrdersPanel"><div class="panel-head"><h3>Meine Bestellungen</h3><span id="customerOrderCount"></span></div><div id="customerOrders"><p class="muted">Wird geladen …</p></div></div>';
+    s.innerHTML='<div class="page-head"><div><p class="eyebrow">KUNDENKONTO</p><h2>Mein Konto</h2><p>Deine Bestellungen, Versandstatus und Benachrichtigungen.</p></div></div><div class="panel" id="customerNotificationsPanel"><div class="panel-head"><h3>Benachrichtigungen</h3><button id="markNotificationsRead" class="secondary" type="button">Alle als gelesen markieren</button><span id="customerNotificationCount"></span></div><div id="customerNotifications"><p class="muted">Wird geladen …</p></div></div><div class="panel" id="customerOrdersPanel"><div class="panel-head"><h3>Meine Bestellungen</h3><span id="customerOrderCount"></span></div><div id="customerOrders"><p class="muted">Wird geladen …</p></div></div>';
     document.querySelector('main').appendChild(s);
     const st=document.createElement('style');st.textContent='#accountView{max-width:1180px;margin:50px auto 80px;padding:0 20px}.customer-order{border-top:1px solid #ddd;padding:18px 0;display:flex;justify-content:space-between;gap:20px}.customer-order:first-child{border-top:0}.customer-status{display:inline-flex;padding:6px 10px;border-radius:999px;background:#eef7d6;font-weight:700}.customer-items{margin-top:8px;color:#6b6873}.customer-total{font-size:18px;font-weight:800}.customer-shipping{margin-top:10px;padding:10px 12px;border:1px solid #ddd;border-radius:10px}.customer-notice{border-top:1px solid #ddd;padding:12px 0}.customer-notice:first-child{border-top:0}.customer-notice strong{display:block}.customer-notice span{color:#6b6873}.tracking-link{display:inline-block;margin-top:7px;font-weight:700}.rk-unread{font-weight:800}@media(max-width:700px){.customer-order{flex-direction:column}}';document.head.appendChild(st);
+    q('#markNotificationsRead').addEventListener('click',markNotificationsRead);
   }
   async function openAccount(){
     const {data}=await db.auth.getSession();if(!data.session){toastA('Bitte zuerst anmelden');q('#authModal')?.classList.remove('hidden');if(typeof setAuthMode==='function')setAuthMode('login');return}
@@ -23,6 +24,11 @@
     if(error){console.error(error);box.innerHTML='<p class="muted">Benachrichtigungen konnten nicht geladen werden.</p>';return}
     const rows=data||[];count.textContent=`${rows.filter(x=>!x.read_at).length} neu`;
     box.innerHTML=rows.map(n=>`<div class="customer-notice ${n.read_at?'':'rk-unread'}"><strong>${esc(n.title)} · Bestellung #${n.order_id}</strong><span>${esc(n.message)} · ${new Date(n.created_at).toLocaleString('de-DE')}</span></div>`).join('')||'<p class="muted">Keine Benachrichtigungen.</p>';
+  }
+  async function markNotificationsRead(){
+    const {error}=await db.from('order_notifications').update({read_at:new Date().toISOString()}).is('read_at',null);
+    if(error){console.error(error);toastA('Benachrichtigungen konnten nicht aktualisiert werden');return}
+    toastA('Benachrichtigungen als gelesen markiert');await loadNotifications();
   }
   async function loadOrders(){
     const box=q('#customerOrders'),count=q('#customerOrderCount');
