@@ -3,6 +3,9 @@
   function setVal(id,v){const e=q(id);if(e)e.value=v??''}
   function escp(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]))}
   function toastP(t){if(typeof toast==='function')toast(t)}
+  let filling=false;
+  let saveInProgress=false;
+
   function publicShopUrl(slug){return location.origin+location.pathname.replace(/[^/]+$/,'')+'shop/?shop='+encodeURIComponent(slug||'')}
 
   function inject(){
@@ -32,7 +35,8 @@
   async function getMerchant(){
     if(typeof db==='undefined') return null;
     const {data:userData}=await db.auth.getSession();
-    const u=userData.session?.user;if(!u)return null;
+    const u=userData.session?.user;
+    if(!u)return null;
     const {data,error}=await db.from('merchants').select('*').eq('owner_id',u.id).maybeSingle();
     if(error){console.error('merchant profile load',error);toastP('Händlerprofil konnte nicht geladen werden');return null}
     return data||null;
@@ -55,57 +59,72 @@
   }
 
   async function fill(){
-    inject();
-    const m=await getMerchant();
-    if(!m)return;
-    renderMerchant(m);
+    if(filling || saveInProgress)return;
+    filling=true;
+    try{
+      inject();
+      const m=await getMerchant();
+      if(m)renderMerchant(m);
+    }finally{filling=false}
   }
 
   async function save(){
-    const m=await getMerchant();
-    if(!m){toastP('Kein Händler-Shop vorhanden');return}
-    const payload={
-      description:(q('#profileDescription')?.value||'').trim(),
-      logo_url:(q('#profileLogoUrl')?.value||'').trim(),
-      shop_url:(q('#profileShopUrl')?.value||'').trim(),
-      contact_email:(q('#profileContactEmail')?.value||'').trim(),
-      payout_method:q('#profilePayoutMethod')?.value||'',
-      payout_email:(q('#profilePayoutEmail')?.value||'').trim(),
-      published:!!q('#profilePublished')?.checked
-    };
-    const {error:updateError}=await db.from('merchants').update(payload).eq('id',m.id).eq('owner_id',m.owner_id);
-    if(updateError){
-      console.error('merchant profile direct save',updateError);
-      toastP('Speichern fehlgeschlagen: '+updateError.message);
-      return;
+    if(saveInProgress)return;
+    saveInProgress=true;
+    const button=q('#saveMerchantProfile');
+    if(button){button.disabled=true;button.textContent='Speichert …'}
+    try{
+      const m=await getMerchant();
+      if(!m){toastP('Kein Händler-Shop vorhanden');return}
+      const values={
+        p_shop_name:m.shop_name||'',
+        p_description:(q('#profileDescription')?.value||'').trim(),
+        p_logo_url:(q('#profileLogoUrl')?.value||'').trim(),
+        p_shop_url:(q('#profileShopUrl')?.value||'').trim(),
+        p_contact_email:(q('#profileContactEmail')?.value||'').trim(),
+        p_payout_method:q('#profilePayoutMethod')?.value||'',
+        p_payout_email:(q('#profilePayoutEmail')?.value||'').trim(),
+        p_published:!!q('#profilePublished')?.checked
+      };
+      const {data:saved,error}=await db.rpc('merchant_update_profile',values).maybeSingle();
+      if(error){
+        console.error('merchant profile RPC save',error);
+        toastP('Speichern fehlgeschlagen: '+error.message);
+        return;
+      }
+      const verified=saved||await getMerchant();
+      if(!verified){toastP('Speichern konnte nicht bestätigt werden');return}
+      const ok=verified.contact_email===values.p_contact_email &&
+        verified.logo_url===values.p_logo_url &&
+        verified.shop_url===values.p_shop_url &&
+        verified.payout_method===values.p_payout_method &&
+        verified.payout_email===values.p_payout_email &&
+        verified.description===values.p_description &&
+        !!verified.published===values.p_published;
+      if(!ok){
+        console.error('merchant profile read-back mismatch',{values,verified});
+        toastP('Speichern wurde nicht bestätigt');
+        return;
+      }
+      if(typeof merchant!=='undefined') merchant=verified;
+      renderMerchant(verified);
+      toastP('Händlerprofil gespeichert');
+    }finally{
+      saveInProgress=false;
+      if(button){button.disabled=false;button.textContent='Händlerprofil speichern'}
     }
-    const verified=await getMerchant();
-    if(!verified){toastP('Speichern konnte nicht bestätigt werden');return}
-    const ok=verified.contact_email===payload.contact_email &&
-      verified.logo_url===payload.logo_url &&
-      verified.shop_url===payload.shop_url &&
-      verified.payout_method===payload.payout_method &&
-      verified.payout_email===payload.payout_email &&
-      verified.description===payload.description &&
-      !!verified.published===payload.published;
-    if(!ok){
-      console.error('merchant profile read-back mismatch',{payload,verified});
-      toastP('Speichern wurde nicht bestätigt');
-      return;
-    }
-    if(typeof merchant!=='undefined') merchant=verified;
-    renderMerchant(verified);
-    toastP('Händlerprofil gespeichert');
   }
 
   const originalSetDashTab=window.setDashTab;
-  window.setDashTab=function(tab){
-    const r=originalSetDashTab.apply(this,arguments);
-    if(tab==='settings')setTimeout(fill,100);
-    return r;
-  };
+  if(typeof originalSetDashTab==='function'){
+    window.setDashTab=function(tab){
+      const r=originalSetDashTab.apply(this,arguments);
+      if(tab==='settings')setTimeout(fill,250);
+      return r;
+    };
+  }
   document.addEventListener('click',e=>{
-    if(e.target.closest('.dash-tab[data-tab="settings"]'))setTimeout(fill,100);
+    if(e.target.closest('.dash-tab[data-tab="settings"]'))setTimeout(fill,250);
   });
-  setTimeout(fill,800);
+  setTimeout(fill,1000);
 })();
