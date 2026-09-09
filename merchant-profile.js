@@ -42,11 +42,11 @@
     if(!m)return;
     setVal('profileContactEmail',m.contact_email||'');
     setVal('profileLogoUrl',m.logo_url||'');
-    setVal('profileShopUrl',m.public_shop_url||'');
+    setVal('profileShopUrl',m.shop_url||'');
     setVal('profilePayoutMethod',m.payout_method||'');
     setVal('profilePayoutEmail',m.payout_email||'');
-    setVal('profileDescription',m.shop_description||'');
-    const pub=q('#profilePublished');if(pub)pub.checked=!!m.is_public;
+    setVal('profileDescription',m.description||'');
+    const pub=q('#profilePublished');if(pub)pub.checked=!!m.published;
     const link=q('#publicShopLinkBox');
     if(link && m.slug){
       const href=publicShopUrl(m.slug);
