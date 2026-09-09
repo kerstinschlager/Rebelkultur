@@ -23,6 +23,10 @@
     count.textContent=`${rows.length} ${rows.length===1?'Händler':'Händler'}`;
     grid.innerHTML=rows.map(m=>{const href='?shop='+encodeURIComponent(m.slug||'')+'#shop';const img=m.logo_url?`<img src="${esc(m.logo_url)}" alt="${esc(m.shop_name)} Logo">`:'RK';return `<article class="merchant-card"><div class="merchant-card-top"><div class="merchant-avatar">${img}</div><div><div class="merchant-badge">VERÖFFENTLICHT</div><h3>${esc(m.shop_name)}</h3></div></div><p>${esc(m.description||'Händler-Shop auf Rebelkultur.')}</p><a class="primary" href="${esc(href)}">Shop ansehen →</a></article>`}).join('')||'<p class="muted">Noch keine veröffentlichten Händler.</p>';
   }
-  function loadFilterScript(){if(document.querySelector('script[data-marketplace-filters]'))return;const s=document.createElement('script');s.src='marketplace-filters.js';s.dataset.marketplaceFilters='1';document.body.appendChild(s)}
+  function loadFilterScript(){
+    if(new URLSearchParams(location.search).get('shop'))return;
+    if(document.querySelector('script[data-marketplace-filters]'))return;
+    const s=document.createElement('script');s.src='marketplace-filters.js';s.dataset.marketplaceFilters='1';document.body.appendChild(s)
+  }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{setTimeout(mount,700);setTimeout(loadFilterScript,1200)});else{setTimeout(mount,700);setTimeout(loadFilterScript,1200)}
 })();
