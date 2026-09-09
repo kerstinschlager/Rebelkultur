@@ -21,13 +21,26 @@ window.changeOrderStatus=async function(id,status){
 };
 
 window.saveShipping=async function(id){
-  const carrier=document.querySelector(`#carrier-${id}`)?.value||'';
-  const tracking=document.querySelector(`#tracking-${id}`)?.value||'';
-  const url=document.querySelector(`#tracking-url-${id}`)?.value||'';
+  const carrier=document.querySelector(`#carrier-${id}`)?.value.trim()||'';
+  const tracking=document.querySelector(`#tracking-${id}`)?.value.trim()||'';
+  const url=document.querySelector(`#tracking-url-${id}`)?.value.trim()||'';
   if(url && !/^https?:\/\//i.test(url))return toast('Tracking-Link muss mit http:// oder https:// beginnen');
-  const {error}=await db.rpc('merchant_update_shipping',{p_order_id:id,p_carrier:carrier,p_tracking_number:tracking,p_tracking_url:url});
-  if(error){console.error(error);toast('Versanddaten konnten nicht gespeichert werden');return}
-  toast('Versanddaten gespeichert'); await window.renderMerchantOrders('#orders'); const full=document.querySelector('#ordersFull'); if(full)await window.renderMerchantOrders('#ordersFull');
+
+  const {error}=await db.from('orders').update({
+    shipping_carrier: carrier || null,
+    tracking_number: tracking || null,
+    tracking_url: url || null
+  }).eq('id',id);
+
+  if(error){
+    console.error(error);
+    toast(`Versanddaten konnten nicht gespeichert werden: ${error.message||'Fehler'}`);
+    return;
+  }
+
+  toast('Versanddaten gespeichert');
+  await window.renderMerchantOrders('#orders');
+  const full=document.querySelector('#ordersFull'); if(full)await window.renderMerchantOrders('#ordersFull');
 };
 
 const shippingStyle=document.createElement('style');
