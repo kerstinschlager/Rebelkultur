@@ -3,12 +3,14 @@
   const KEY='sb_publishable_9tDZPZ9KmCjHZqVXBmO-1g_8Aqpu8qE';
   const db=window.supabase.createClient(URL,KEY);
   const esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
+  function loadMerchantShop(){if(document.querySelector('script[data-merchant-shop]'))return;const s=document.createElement('script');s.src='merchant-shop.js?v=20260909-1';s.dataset.merchantShop='1';document.body.appendChild(s)}
   function mount(){
+    if(new URLSearchParams(location.search).get('shop')){loadMerchantShop();return;}
     if(document.querySelector('#merchantDirectory'))return;
     const shop=document.querySelector('#shopView');
     if(!shop)return;
     const sec=document.createElement('section'); sec.id='merchantDirectory'; sec.className='merchant-directory';
-    sec.innerHTML='<div class="page-head"><div><p class="eyebrow">HÄNDLER</p><h2>Unsere Händler</h2><p>Entdecke unabhängige Shops auf Rebelkultur.</p></div><span id="merchantCount" class="muted"></span></div><div id="merchantGrid" class="merchant-grid"><p class="muted">Händler werden geladen …</p></div></div>';
+    sec.innerHTML='<div class="page-head"><div><p class="eyebrow">HÄNDLER</p><h2>Unsere Händler</h2><p>Entdecke unabhängige Shops auf Rebelkultur.</p></div><span id="merchantCount" class="muted"></span></div><div id="merchantGrid" class="merchant-grid"><p class="muted">Händler werden geladen …</p></div>';
     shop.parentNode.appendChild(sec);
     const style=document.createElement('style');style.textContent='.merchant-directory{max-width:1180px;margin:55px auto 80px;padding:0 20px}.merchant-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:18px}.merchant-card{border:1px solid #ddd;border-radius:22px;padding:22px;background:rgba(255,255,255,.8);box-shadow:0 10px 30px rgba(20,15,35,.06)}.merchant-card-top{display:flex;gap:16px;align-items:center}.merchant-avatar{width:72px;height:72px;border-radius:18px;background:#d7ff18;display:grid;place-items:center;font-size:28px;font-weight:900;color:#121016;overflow:hidden}.merchant-avatar img{width:100%;height:100%;object-fit:contain}.merchant-card h3{margin:0}.merchant-card p{min-height:42px}.merchant-card .primary{display:inline-flex;text-decoration:none}.merchant-badge{font-size:11px;letter-spacing:.12em;font-weight:800;color:#79b900}.merchant-directory .page-head{margin-bottom:20px}';document.head.appendChild(style);
     load();
