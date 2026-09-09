@@ -52,17 +52,18 @@
   }
   async function save(){
     const m=await getMerchant();if(!m){toastP('Kein Händler-Shop vorhanden');return}
-    const {data,error}=await db.rpc('update_merchant_profile',{
-      p_shop_name:(q('#settingShopName')?.value||m.shop_name||'').trim(),
-      p_description:q('#profileDescription')?.value||null,
-      p_logo_url:q('#profileLogoUrl')?.value||null,
-      p_shop_url:q('#profileShopUrl')?.value||null,
-      p_contact_email:q('#profileContactEmail')?.value||null,
-      p_payout_method:q('#profilePayoutMethod')?.value||null,
-      p_payout_email:q('#profilePayoutEmail')?.value||null,
-      p_published:!!q('#profilePublished')?.checked
-    });
-    if(error){toastP(error.message);return}
+    const payload={
+      shop_name:(q('#settingShopName')?.value||m.shop_name||'').trim(),
+      description:(q('#profileDescription')?.value||'').trim()||null,
+      logo_url:(q('#profileLogoUrl')?.value||'').trim()||null,
+      shop_url:(q('#profileShopUrl')?.value||'').trim()||null,
+      contact_email:(q('#profileContactEmail')?.value||'').trim()||null,
+      payout_method:q('#profilePayoutMethod')?.value||null,
+      payout_email:(q('#profilePayoutEmail')?.value||'').trim()||null,
+      published:!!q('#profilePublished')?.checked
+    };
+    const {data,error}=await db.from('merchants').update(payload).eq('id',m.id).eq('owner_id',m.owner_id).select('*').single();
+    if(error){console.error('merchant profile save',error);toastP('Speichern fehlgeschlagen: '+error.message);return}
     if(typeof merchant!=='undefined') merchant=data;
     toastP('Händlerprofil gespeichert');
     await fill();
