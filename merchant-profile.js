@@ -1,7 +1,6 @@
 (function(){
   function q(s){return document.querySelector(s)}
   function setVal(id,v){const e=q(id);if(e)e.value=v??''}
-  function escp(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]))}
   function toastP(t){if(typeof toast==='function')toast(t)}
   let filling=false;
   let saveInProgress=false;
@@ -54,18 +53,14 @@
     const link=q('#publicShopLinkBox');
     if(link && m.slug){
       const href=publicShopUrl(m.slug);
-      link.innerHTML=`Öffentlicher Händler-Shop: <a href="${escp(href)}" target="_blank" rel="noopener">${escp(href)}</a>`;
+      link.innerHTML=`Öffentlicher Händler-Shop: <a href="${href.replace(/"/g,'&quot;')}" target="_blank" rel="noopener">${href.replace(/&/g,'&amp;')}</a>`;
     } else if(link) link.textContent='';
   }
 
   async function fill(){
     if(filling || saveInProgress)return;
     filling=true;
-    try{
-      inject();
-      const m=await getMerchant();
-      if(m)renderMerchant(m);
-    }finally{filling=false}
+    try{inject();const m=await getMerchant();if(m)renderMerchant(m)}finally{filling=false}
   }
 
   async function save(){
@@ -76,38 +71,27 @@
     try{
       const m=await getMerchant();
       if(!m){toastP('Kein Händler-Shop vorhanden');return}
-      const values={
-        p_shop_name:m.shop_name||'',
-        p_description:(q('#profileDescription')?.value||'').trim(),
-        p_logo_url:(q('#profileLogoUrl')?.value||'').trim(),
-        p_shop_url:(q('#profileShopUrl')?.value||'').trim(),
-        p_contact_email:(q('#profileContactEmail')?.value||'').trim(),
-        p_payout_method:q('#profilePayoutMethod')?.value||'',
-        p_payout_email:(q('#profilePayoutEmail')?.value||'').trim(),
-        p_published:!!q('#profilePublished')?.checked
+      const payload={
+        description:(q('#profileDescription')?.value||'').trim(),
+        logo_url:(q('#profileLogoUrl')?.value||'').trim(),
+        shop_url:(q('#profileShopUrl')?.value||'').trim(),
+        contact_email:(q('#profileContactEmail')?.value||'').trim(),
+        payout_method:q('#profilePayoutMethod')?.value||'',
+        payout_email:(q('#profilePayoutEmail')?.value||'').trim(),
+        published:!!q('#profilePublished')?.checked
       };
-      const {data:saved,error}=await db.rpc('merchant_update_profile',values).maybeSingle();
+      const {data:saved,error}=await db.from('merchants').update(payload).eq('id',m.id).select('*').single();
       if(error){
-        console.error('merchant profile RPC save',error);
+        console.error('merchant profile direct save',error);
         toastP('Speichern fehlgeschlagen: '+error.message);
         return;
       }
-      const verified=saved||await getMerchant();
-      if(!verified){toastP('Speichern konnte nicht bestätigt werden');return}
-      const ok=verified.contact_email===values.p_contact_email &&
-        verified.logo_url===values.p_logo_url &&
-        verified.shop_url===values.p_shop_url &&
-        verified.payout_method===values.p_payout_method &&
-        verified.payout_email===values.p_payout_email &&
-        verified.description===values.p_description &&
-        !!verified.published===values.p_published;
-      if(!ok){
-        console.error('merchant profile read-back mismatch',{values,verified});
-        toastP('Speichern wurde nicht bestätigt');
-        return;
-      }
-      if(typeof merchant!=='undefined') merchant=verified;
-      renderMerchant(verified);
+      const ok=saved && saved.contact_email===payload.contact_email &&
+        saved.logo_url===payload.logo_url && saved.shop_url===payload.shop_url &&
+        saved.payout_method===payload.payout_method && saved.payout_email===payload.payout_email &&
+        saved.description===payload.description && !!saved.published===payload.published;
+      if(!ok){console.error('merchant profile read-back mismatch',{payload,saved});toastP('Speichern wurde nicht bestätigt');return}
+      renderMerchant(saved);
       toastP('Händlerprofil gespeichert');
     }finally{
       saveInProgress=false;
@@ -117,14 +101,8 @@
 
   const originalSetDashTab=window.setDashTab;
   if(typeof originalSetDashTab==='function'){
-    window.setDashTab=function(tab){
-      const r=originalSetDashTab.apply(this,arguments);
-      if(tab==='settings')setTimeout(fill,250);
-      return r;
-    };
+    window.setDashTab=function(tab){const r=originalSetDashTab.apply(this,arguments);if(tab==='settings')setTimeout(fill,250);return r};
   }
-  document.addEventListener('click',e=>{
-    if(e.target.closest('.dash-tab[data-tab="settings"]'))setTimeout(fill,250);
-  });
+  document.addEventListener('click',e=>{if(e.target.closest('.dash-tab[data-tab="settings"]'))setTimeout(fill,250)});
   setTimeout(fill,1000);
 })();
