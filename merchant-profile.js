@@ -4,6 +4,7 @@
   function escp(v){return String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]))}
   function toastP(t){if(typeof toast==='function')toast(t)}
   function publicShopUrl(slug){return location.origin+location.pathname.replace(/[^/]+$/,'')+'shop/?shop='+encodeURIComponent(slug||'')}
+
   function inject(){
     const panel=q('#dashboardSettings');
     if(!panel || q('#merchantProfileFields')) return;
@@ -27,17 +28,20 @@
     panel.appendChild(box);
     q('#saveMerchantProfile').addEventListener('click',save);
   }
+
   async function getMerchant(){
     if(typeof db==='undefined') return null;
+    // Prefer the merchant already loaded by app.js. This avoids a second
+    // client-side SELECT being blocked by a stale/stricter RLS policy.
+    if(typeof merchant!=='undefined' && merchant?.id) return merchant;
     const {data:userData}=await db.auth.getSession();
     const u=userData.session?.user;if(!u)return null;
     const {data,error}=await db.from('merchants').select('*').eq('owner_id',u.id).maybeSingle();
     if(error){console.error('merchant profile load',error);return null}
     return data||null;
   }
-  async function fill(){
-    inject();
-    const m=await getMerchant();
+
+  function renderMerchant(m){
     if(!m)return;
     setVal('profileContactEmail',m.contact_email||'');
     setVal('profileLogoUrl',m.logo_url||'');
@@ -50,10 +54,21 @@
     if(link && m.slug){
       const href=publicShopUrl(m.slug);
       link.innerHTML=`Öffentlicher Händler-Shop: <a href="${escp(href)}" target="_blank" rel="noopener">${escp(href)}</a>`;
+    } else if(link) {
+      link.textContent='';
     }
   }
+
+  async function fill(){
+    inject();
+    const m=await getMerchant();
+    if(!m)return;
+    renderMerchant(m);
+  }
+
   async function save(){
-    const m=await getMerchant();if(!m){toastP('Kein Händler-Shop vorhanden');return}
+    const m=await getMerchant();
+    if(!m){toastP('Kein Händler-Shop vorhanden');return}
     const values={
       p_shop_name:(q('#settingShopName')?.value||m.shop_name||'').trim(),
       p_description:(q('#profileDescription')?.value||'').trim(),
@@ -75,9 +90,10 @@
       return;
     }
     if(typeof merchant!=='undefined') merchant=verified;
-    await fill();
+    renderMerchant(verified);
     toastP('Händlerprofil gespeichert');
   }
+
   const originalSetDashTab=window.setDashTab;
   window.setDashTab=function(tab){
     const r=originalSetDashTab.apply(this,arguments);
