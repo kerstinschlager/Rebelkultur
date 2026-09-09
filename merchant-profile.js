@@ -80,18 +80,44 @@
         payout_email:(q('#profilePayoutEmail')?.value||'').trim(),
         published:!!q('#profilePublished')?.checked
       };
-      const {data:saved,error}=await db.from('merchants').update(payload).eq('id',m.id).select('*').single();
+
+      // Use the existing SECURITY DEFINER function. This bypasses merchant RLS safely
+      // because the function itself restricts the update to auth.uid()'s merchant row.
+      const {data:saved,error}=await db.rpc('merchant_update_profile',{
+        p_shop_name:m.shop_name||'',
+        p_description:payload.description,
+        p_logo_url:payload.logo_url,
+        p_shop_url:payload.shop_url,
+        p_contact_email:payload.contact_email,
+        p_payout_method:payload.payout_method,
+        p_payout_email:payload.payout_email,
+        p_published:payload.published
+      }).maybeSingle();
+
       if(error){
-        console.error('merchant profile direct save',error);
+        console.error('merchant profile rpc save',error);
         toastP('Speichern fehlgeschlagen: '+error.message);
         return;
       }
-      const ok=saved && saved.contact_email===payload.contact_email &&
-        saved.logo_url===payload.logo_url && saved.shop_url===payload.shop_url &&
-        saved.payout_method===payload.payout_method && saved.payout_email===payload.payout_email &&
-        saved.description===payload.description && !!saved.published===payload.published;
-      if(!ok){console.error('merchant profile read-back mismatch',{payload,saved});toastP('Speichern wurde nicht bestätigt');return}
-      renderMerchant(saved);
+
+      if(!saved || !saved.id){
+        toastP('Speichern wurde nicht bestätigt');
+        return;
+      }
+
+      // Read back from the database, not from the form, before confirming success.
+      const verified=await getMerchant();
+      const ok=verified && verified.contact_email===payload.contact_email &&
+        verified.logo_url===payload.logo_url && verified.shop_url===payload.shop_url &&
+        verified.payout_method===payload.payout_method && verified.payout_email===payload.payout_email &&
+        verified.description===payload.description && !!verified.published===payload.published;
+
+      if(!ok){
+        console.error('merchant profile read-back mismatch',{payload,verified});
+        toastP('Speichern wurde nicht bestätigt');
+        return;
+      }
+      renderMerchant(verified);
       toastP('Händlerprofil gespeichert');
     }finally{
       saveInProgress=false;
