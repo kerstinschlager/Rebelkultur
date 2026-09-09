@@ -25,7 +25,7 @@
       <button id="saveMerchantProfile" class="primary" type="button" style="margin-top:14px">Händlerprofil speichern</button>
       <div class="muted" style="margin-top:10px">Zahlungsdaten werden hier nicht als geheime Zugangsdaten gespeichert. Die echte Zahlungsanbindung erfolgt später über den jeweiligen Anbieter.</div>`;
     panel.appendChild(box);
-    q('#saveMerchantProfile').addEventListener('click',save)
+    q('#saveMerchantProfile').addEventListener('click',save);
   }
   async function getMerchant(){
     if(typeof db==='undefined') return null;
@@ -33,10 +33,12 @@
     const u=userData.session?.user;if(!u)return null;
     const {data,error}=await db.from('merchants').select('*').eq('owner_id',u.id).maybeSingle();
     if(error){console.error('merchant profile load',error);return null}
-    return data||null
+    return data||null;
   }
   async function fill(){
-    const m=await getMerchant();if(!m)return;
+    inject();
+    const m=await getMerchant();
+    if(!m)return;
     setVal('profileContactEmail',m.contact_email||'');
     setVal('profileLogoUrl',m.logo_url||'');
     setVal('profileShopUrl',m.shop_url||'');
@@ -73,14 +75,17 @@
       return;
     }
     if(typeof merchant!=='undefined') merchant=verified;
-    toastP('Händlerprofil gespeichert');
     await fill();
+    toastP('Händlerprofil gespeichert');
   }
   const originalSetDashTab=window.setDashTab;
   window.setDashTab=function(tab){
     const r=originalSetDashTab.apply(this,arguments);
-    if(tab==='settings')setTimeout(()=>{inject();fill()},200);
+    if(tab==='settings')setTimeout(fill,100);
     return r;
   };
-  setTimeout(()=>{inject();fill()},800);
+  document.addEventListener('click',e=>{
+    if(e.target.closest('.dash-tab[data-tab="settings"]'))setTimeout(fill,100);
+  });
+  setTimeout(fill,800);
 })();
