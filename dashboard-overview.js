@@ -1,15 +1,19 @@
 (()=>{
   const $=s=>document.querySelector(s);
   const money=n=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(n)||0);
+  const db=window.supabase.createClient(window.__RK_SUPABASE_URL,window.__RK_SUPABASE_KEY);
   async function refreshOverview(){
-    if(!window.currentUser||!window.merchant)return;
-    const m=window.merchant;
-    const {data:products}=await window.db.from('products').select('id,price,stock').eq('merchant_id',m.id);
+    const {data:{session}}=await db.auth.getSession();
+    const user=session?.user;
+    if(!user)return;
+    const {data:m}=await db.from('merchants').select('id').eq('owner_id',user.id).maybeSingle();
+    if(!m)return;
+    const {data:products}=await db.from('products').select('id,price,stock').eq('merchant_id',m.id);
     const mine=products||[];
     const ids=mine.map(p=>p.id);
     let orders=[];
     if(ids.length){
-      const {data:items}=await window.db.from('order_items').select('order_id,product_id,quantity,unit_price,orders(id,status,created_at)').in('product_id',ids);
+      const {data:items}=await db.from('order_items').select('order_id,product_id,quantity,unit_price,orders(id,status,created_at)').in('product_id',ids);
       const grouped={};
       (items||[]).forEach(i=>{const o=i.orders;if(!o||['new','cancelled'].includes(o.status))return;(grouped[o.id]??={...o,items:[]}).items.push(i)});
       orders=Object.values(grouped);
