@@ -31,13 +31,10 @@
 
   async function getMerchant(){
     if(typeof db==='undefined') return null;
-    // Prefer the merchant already loaded by app.js. This avoids a second
-    // client-side SELECT being blocked by a stale/stricter RLS policy.
-    if(typeof merchant!=='undefined' && merchant?.id) return merchant;
     const {data:userData}=await db.auth.getSession();
     const u=userData.session?.user;if(!u)return null;
     const {data,error}=await db.from('merchants').select('*').eq('owner_id',u.id).maybeSingle();
-    if(error){console.error('merchant profile load',error);return null}
+    if(error){console.error('merchant profile load',error);toastP('Händlerprofil konnte nicht geladen werden');return null}
     return data||null;
   }
 
@@ -45,18 +42,16 @@
     if(!m)return;
     setVal('profileContactEmail',m.contact_email||'');
     setVal('profileLogoUrl',m.logo_url||'');
-    setVal('profileShopUrl',m.shop_url||'');
+    setVal('profileShopUrl',m.public_shop_url||'');
     setVal('profilePayoutMethod',m.payout_method||'');
     setVal('profilePayoutEmail',m.payout_email||'');
-    setVal('profileDescription',m.description||'');
-    const pub=q('#profilePublished');if(pub)pub.checked=!!m.published;
+    setVal('profileDescription',m.shop_description||'');
+    const pub=q('#profilePublished');if(pub)pub.checked=!!m.is_public;
     const link=q('#publicShopLinkBox');
     if(link && m.slug){
       const href=publicShopUrl(m.slug);
       link.innerHTML=`Öffentlicher Händler-Shop: <a href="${escp(href)}" target="_blank" rel="noopener">${escp(href)}</a>`;
-    } else if(link) {
-      link.textContent='';
-    }
+    } else if(link) link.textContent='';
   }
 
   async function fill(){
@@ -80,15 +75,8 @@
       p_published:!!q('#profilePublished')?.checked
     };
     const {data:verified,error}=await db.rpc('merchant_update_profile',values).maybeSingle();
-    if(error){
-      console.error('merchant profile save',error);
-      toastP('Speichern fehlgeschlagen: '+error.message);
-      return;
-    }
-    if(!verified){
-      toastP('Speichern konnte nicht bestätigt werden');
-      return;
-    }
+    if(error){console.error('merchant profile save',error);toastP('Speichern fehlgeschlagen: '+error.message);return}
+    if(!verified){toastP('Speichern konnte nicht bestätigt werden');return}
     if(typeof merchant!=='undefined') merchant=verified;
     renderMerchant(verified);
     toastP('Händlerprofil gespeichert');
