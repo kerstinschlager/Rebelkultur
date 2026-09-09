@@ -49,6 +49,61 @@
     toast('Shop-Einstellungen gespeichert');
   }
 
+  const legalFields={Impressum:'impressum',Datenschutz:'datenschutz',AGB:'agb',Widerruf:'widerruf'};
+  let legalData={impressum:'',datenschutz:'',agb:'',widerruf:''};
+  let activeLegal='impressum';
+
+  function ensureLegalModal(){
+    if($('#legalModal'))return;
+    const m=document.createElement('div');
+    m.id='legalModal';m.className='modal hidden';m.setAttribute('role','dialog');m.setAttribute('aria-modal','true');
+    m.innerHTML='<div class="modal-card"><button class="close" type="button" id="legalClose">×</button><h2 id="legalTitle">Rechtstext bearbeiten</h2><label>Text<textarea id="legalText" rows="14" required></textarea></label><button class="primary full" type="button" id="legalSave">Speichern</button></div>';
+    document.body.appendChild(m);
+    $('#legalClose').onclick=()=>m.classList.add('hidden');
+    $('#legalSave').onclick=saveLegal;
+  }
+
+  async function loadLegal(){
+    const ctx=await getContext();
+    if(!ctx)return null;
+    const {data,error}=await db.from('merchant_legal_settings').select('impressum,datenschutz,agb,widerruf').eq('merchant_id',ctx.merchant.id).maybeSingle();
+    if(error){toast(error.message);return null;}
+    legalData=data||{impressum:'',datenschutz:'',agb:'',widerruf:''};
+    return ctx;
+  }
+
+  async function openLegal(label){
+    const key=legalFields[label];
+    if(!key)return;
+    const ctx=await loadLegal();
+    if(!ctx)return toast('Bitte zuerst anmelden');
+    activeLegal=key;ensureLegalModal();
+    $('#legalTitle').textContent=label+' bearbeiten';
+    $('#legalText').value=legalData[key]||'';
+    $('#legalModal').classList.remove('hidden');
+  }
+
+  async function saveLegal(){
+    const ctx=await getContext();
+    if(!ctx)return toast('Bitte zuerst anmelden');
+    legalData[activeLegal]=$('#legalText').value.trim();
+    const payload={merchant_id:ctx.merchant.id,impressum:legalData.impressum||'',datenschutz:legalData.datenschutz||'',agb:legalData.agb||'',widerruf:legalData.widerruf||''};
+    const {error}=await db.from('merchant_legal_settings').upsert(payload,{onConflict:'merchant_id'});
+    if(error)return toast(error.message);
+    $('#legalModal').classList.add('hidden');
+    toast('Rechtstext gespeichert');
+  }
+
+  function bindLegal(){
+    document.querySelectorAll('.legal-grid > div').forEach(card=>{
+      if(card.dataset.legalBound)return;
+      card.dataset.legalBound='1';card.style.cursor='pointer';
+      card.addEventListener('click',()=>openLegal(card.childNodes[0].textContent.trim()));
+    });
+  }
+
   window.loadSettingsForm=load;
   window.saveSettings=save;
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',bindLegal);else bindLegal();
+  document.addEventListener('click',e=>{if(e.target.closest('.dash-tab[data-tab="legal"]'))setTimeout(bindLegal,50);});
 })();
