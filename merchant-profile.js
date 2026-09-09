@@ -64,19 +64,35 @@
   async function save(){
     const m=await getMerchant();
     if(!m){toastP('Kein Händler-Shop vorhanden');return}
-    const values={
-      p_shop_name:(q('#settingShopName')?.value||m.shop_name||'').trim(),
-      p_description:(q('#profileDescription')?.value||'').trim(),
-      p_logo_url:(q('#profileLogoUrl')?.value||'').trim(),
-      p_shop_url:(q('#profileShopUrl')?.value||'').trim(),
-      p_contact_email:(q('#profileContactEmail')?.value||'').trim(),
-      p_payout_method:q('#profilePayoutMethod')?.value||'',
-      p_payout_email:(q('#profilePayoutEmail')?.value||'').trim(),
-      p_published:!!q('#profilePublished')?.checked
+    const payload={
+      description:(q('#profileDescription')?.value||'').trim(),
+      logo_url:(q('#profileLogoUrl')?.value||'').trim(),
+      shop_url:(q('#profileShopUrl')?.value||'').trim(),
+      contact_email:(q('#profileContactEmail')?.value||'').trim(),
+      payout_method:q('#profilePayoutMethod')?.value||'',
+      payout_email:(q('#profilePayoutEmail')?.value||'').trim(),
+      published:!!q('#profilePublished')?.checked
     };
-    const {data:verified,error}=await db.rpc('merchant_update_profile',values).maybeSingle();
-    if(error){console.error('merchant profile save',error);toastP('Speichern fehlgeschlagen: '+error.message);return}
+    const {error:updateError}=await db.from('merchants').update(payload).eq('id',m.id).eq('owner_id',m.owner_id);
+    if(updateError){
+      console.error('merchant profile direct save',updateError);
+      toastP('Speichern fehlgeschlagen: '+updateError.message);
+      return;
+    }
+    const verified=await getMerchant();
     if(!verified){toastP('Speichern konnte nicht bestätigt werden');return}
+    const ok=verified.contact_email===payload.contact_email &&
+      verified.logo_url===payload.logo_url &&
+      verified.shop_url===payload.shop_url &&
+      verified.payout_method===payload.payout_method &&
+      verified.payout_email===payload.payout_email &&
+      verified.description===payload.description &&
+      !!verified.published===payload.published;
+    if(!ok){
+      console.error('merchant profile read-back mismatch',{payload,verified});
+      toastP('Speichern wurde nicht bestätigt');
+      return;
+    }
     if(typeof merchant!=='undefined') merchant=verified;
     renderMerchant(verified);
     toastP('Händlerprofil gespeichert');
