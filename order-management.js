@@ -12,7 +12,7 @@
     if (prodError) throw prodError;
     const ids = (prodIds || []).map(p => p.id);
     if (!ids.length) return [];
-    const { data: items, error } = await db.from('order_items').select('order_id,product_id,product_name,quantity,unit_price,orders(id,status,total,created_at)').in('product_id', ids);
+    const { data: items, error } = await db.from('order_items').select('order_id,product_id,product_name,quantity,unit_price,orders(id,status,total,created_at,shipping_carrier,tracking_number,tracking_url,shipped_at)').in('product_id', ids);
     if (error) throw error;
     const grouped = {};
     (items || []).forEach(i => {
@@ -72,7 +72,7 @@
       const shown = value === 'all' ? active : active.filter(o => o.status === value);
       list.innerHTML = shown.map(o => {
         const merchantTotal = o.items.reduce((s,i) => s + Number(i.unit_price) * Number(i.quantity), 0);
-        return `<div class="order-row"><div><strong>Bestellung #${o.id}</strong><div class="muted">${new Date(o.created_at).toLocaleString('de-DE')} · ${o.items.map(i => `${esc(i.product_name)} × ${i.quantity}`).join(', ')}</div></div><div><strong>${money(merchantTotal)}</strong><select onchange="changeOrderStatus(${o.id},this.value)"><option ${o.status==='paid'?'selected':''} value="paid">Bezahlt</option><option ${o.status==='processing'?'selected':''} value="processing">In Bearbeitung</option><option ${o.status==='shipped'?'selected':''} value="shipped">Versendet</option><option ${o.status==='completed'?'selected':''} value="completed">Abgeschlossen</option><option ${o.status==='cancelled'?'selected':''} value="cancelled">Storniert</option></select><div class="muted">${statusLabel(o.status)}</div></div></div>`;
+        return `<div class="order-row rk-order-card"><div><strong>Bestellung #${o.id}</strong><div class="muted">${new Date(o.created_at).toLocaleString('de-DE')} · ${o.items.map(i => `${esc(i.product_name)} × ${i.quantity}`).join(', ')}</div><div class="rk-shipping"><label>Status<select onchange="changeOrderStatus(${o.id},this.value)"><option value="paid" ${o.status==='paid'?'selected':''}>Bezahlt</option><option value="processing" ${o.status==='processing'?'selected':''}>In Bearbeitung</option><option value="shipped" ${o.status==='shipped'?'selected':''}>Versendet</option><option value="completed" ${o.status==='completed'?'selected':''}>Abgeschlossen</option><option value="cancelled" ${o.status==='cancelled'?'selected':''}>Storniert</option></select></label><label>Versanddienstleister<input id="carrier-${o.id}" value="${esc(o.shipping_carrier||'')}" placeholder="z. B. DHL"></label><label>Sendungsnummer<input id="tracking-${o.id}" value="${esc(o.tracking_number||'')}" placeholder="Sendungsnummer"></label><label>Tracking-Link<input id="tracking-url-${o.id}" value="${esc(o.tracking_url||'')}" placeholder="https://…"></label><button class="secondary" type="button" onclick="saveShipping(${o.id})">Versanddaten speichern</button>${o.shipped_at?`<span class="muted">Versendet am ${new Date(o.shipped_at).toLocaleDateString('de-DE')}</span>`:''}</div></div><div><strong>${money(merchantTotal)}</strong><div class="muted">${statusLabel(o.status)}</div></div></div>`;
       }).join('') || '<p class="muted">Keine passenden Bestellungen.</p>';
     };
     filter.onchange = draw;
@@ -102,4 +102,8 @@
     await window.renderMerchantOrders('#orders');
     await window.renderMerchantOrders('#ordersFull');
   };
+
+  const shippingStyle=document.createElement('style');
+  shippingStyle.textContent='.rk-order-card{align-items:flex-start}.rk-shipping{margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(180px,1fr));gap:10px}.rk-shipping label{display:flex;flex-direction:column;gap:5px;font-size:13px}.rk-shipping input,.rk-shipping select{padding:9px;border:1px solid #d9d3e5;border-radius:8px;background:#fff}.rk-shipping button{align-self:end}.rk-shipping .muted{align-self:center}@media(max-width:800px){.rk-shipping{grid-template-columns:1fr}}';
+  document.head.appendChild(shippingStyle);
 })();
