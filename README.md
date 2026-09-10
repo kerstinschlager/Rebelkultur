@@ -1,6 +1,6 @@
 # Rebelkultur Shops
 
-Shop- und Händlerplattform für Rebelkultur mit Supabase-Backend, Authentifizierung, Händlerbereich, Kundenkonto und Stripe-Checkout-Grundlage.
+Shop- und Händlerplattform für Rebelkultur mit Supabase-Backend, Authentifizierung, Händlerbereich, Kundenkonto und Stripe-Checkout.
 
 ## Aktueller Stand
 
@@ -8,16 +8,19 @@ Shop- und Händlerplattform für Rebelkultur mit Supabase-Backend, Authentifizie
 - Produktsuche, Kategorien und Sortierung
 - Warenkorb mit Bestandsprüfung
 - Kundenkonto und Bestellübersicht
-- Händler-Dashboard
+- Händler-Dashboard mit Kennzahlen
 - Produkte anlegen, bearbeiten und löschen
 - Händlerprofil, Shop-URL und Veröffentlichung
+- Öffentliche Händler-Shops
 - Händler-Bestellungen und Statusverwaltung
+- Versanddienstleister, Tracking und Kundenbenachrichtigungen
 - Plattform-Admin mit Provisionen und Auszahlungsübersicht
 - Supabase Auth + Row Level Security
 - Stripe Connect Händler-Onboarding
 - Stripe Checkout mit Plattformprovision
-- Stripe Webhook für bezahlt, fehlgeschlagen und erstattet
+- Stripe Webhook für bezahlt, fehlgeschlagen, abgelaufen und erstattet
 - Gehärtete Zahlungsstatus- und Provisionsgrenzen in der Datenbank
+- Händler-FAQ, Checklisten und Marketing-Bereich
 
 ## Stripe-Konfiguration
 
@@ -34,9 +37,16 @@ Frontend-Dateien liegen im Repository-Root. Backend-Logik für Zahlungen läuft 
 ## Wichtige Dateien
 
 - `index.html` – Plattformoberfläche
-- `app.js` – Shop-, Händler- und Checkout-Grundfunktionen
+- `app.js` – Shop- und Grundfunktionen
 - `stripe.js` – Stripe-Connect-/Checkout-Frontend-Anbindung
-- `merchant-profile.js` – Händlerprofil und Shop-Einstellungen
+- `merchant-profile-v2.js` – Händlerprofil
+- `merchant-directory.js` – öffentliche Händlerübersicht
+- `merchant-shop.js` – öffentlicher Händler-Shop
+- `dashboard-overview.js` – Händler-Dashboard
+- `order-management.js` – Händler-Bestellungen und Versand
 - `customer-account.js` – Kundenkonto und Bestellungen
-- `security-patch.js` – abgesicherte Händler-Aktionen
+- `shop-settings.js` – Shop- und Rechtseinstellungen
+- `merchant-marketing.js` – Marketing-Bereich
+- `merchant-support.js` – FAQ und Support
+- `checklist-repair.js` – Händler-Checkliste
 - `supabase/migrations/` – Datenbankmigrationen
