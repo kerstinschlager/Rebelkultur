@@ -2,7 +2,7 @@
   const db = window.supabase?.createClient(window.__RK_SUPABASE_URL, window.__RK_SUPABASE_KEY);
   if (!db) return;
   const money = n => new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' }).format(Number(n) || 0);
-  const esc = v => String(v ?? '').replace(/[&<>\'\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]));
+  const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
   const state = { orders: [], target: '#orders' };
 
   async function getMerchant() {
@@ -61,7 +61,7 @@
         </select>
       </div>
       <div class="order-summary">
-        <span>Umsatz: <strong>${money(active.reduce((s,o) => s + o.items.reduce((x,i)=>x + Number(i.unit_price)*Number(i.quantity),0),0))}</strong></span>
+        <span>Artikelumsatz: <strong>${money(active.reduce((s,o) => s + o.items.reduce((x,i)=>x + Number(i.unit_price)*Number(i.quantity),0),0))}</strong></span>
         <span>Offene Bearbeitung: <strong>${counts.paid + counts.processing}</strong></span>
       </div>
       <div id="rkOrderList"></div>`;
@@ -121,6 +121,25 @@
     window.renderDashboard = async function(...args) {
       await existingDashboard.apply(this, args);
       await window.renderMerchantOrders('#orders');
+    };
+  }
+
+  const existingSetDashTab = window.setDashTab;
+  if (typeof existingSetDashTab === 'function') {
+    window.setDashTab = async function(tab) {
+      document.querySelectorAll('.dash-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+      document.querySelectorAll('.dash-panel').forEach(p => p.classList.add('hidden'));
+      const map = { overview:'#dashboardOverview', products:'#dashboardProducts', orders:'#dashboardOrders', settings:'#dashboardSettings', legal:'#dashboardLegal', checklist:'#dashboardChecklist', faq:'#dashboardFaq', marketing:'#dashboardMarketing' };
+      document.querySelector(map[tab] || map.overview)?.classList.remove('hidden');
+      if (tab === 'overview') {
+        if (typeof window.renderDashboard === 'function') await window.renderDashboard();
+      } else if (tab === 'orders') {
+        await window.renderMerchantOrders('#ordersFull');
+      } else if (tab === 'products' && typeof window.renderProductsFull === 'function') {
+        await window.renderProductsFull();
+      } else if (tab === 'settings' && typeof window.loadSettingsForm === 'function') {
+        await window.loadSettingsForm();
+      }
     };
   }
 
