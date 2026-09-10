@@ -1,4 +1,4 @@
-const SUPABASE_URL='https://oansbivkczjbtxaknks.supabase.co';
+const SUPABASE_URL='https://oansbivjkczjbtxaknks.supabase.co';
 const SUPABASE_KEY='sb_publishable_9tDZPZ9KmCjHZqVXBmO-1g_8Aqpu8qE';
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 let products=[],cart=JSON.parse(localStorage.getItem('rebel_cart')||'[]'),currentUser=null,merchant=null,authMode='login';
