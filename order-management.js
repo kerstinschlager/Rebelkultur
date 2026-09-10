@@ -116,6 +116,14 @@
     await window.renderMerchantOrders('#ordersFull');
   };
 
+  const existingDashboard = window.renderDashboard;
+  if (typeof existingDashboard === 'function') {
+    window.renderDashboard = async function(...args) {
+      await existingDashboard.apply(this, args);
+      await window.renderMerchantOrders('#orders');
+    };
+  }
+
   const shippingStyle=document.createElement('style');
   shippingStyle.textContent='.rk-order-card{align-items:flex-start}.rk-shipping{margin-top:12px;display:grid;grid-template-columns:repeat(2,minmax(180px,1fr));gap:10px}.rk-shipping label{display:flex;flex-direction:column;gap:5px;font-size:13px}.rk-shipping input,.rk-shipping select{padding:9px;border:1px solid #d9d3e5;border-radius:8px;background:#fff}.rk-shipping button{align-self:end}.rk-shipping .muted{align-self:center}@media(max-width:800px){.rk-shipping{grid-template-columns:1fr}}';
   document.head.appendChild(shippingStyle);
