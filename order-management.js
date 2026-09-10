@@ -5,6 +5,14 @@
   const esc = v => String(v ?? '').replace(/[&<>\'\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','\"':'&quot;'}[c]));
   const state = { orders: [], target: '#orders' };
 
+  async function getMerchant() {
+    const { data: session } = await db.auth.getSession();
+    const uid = session.session?.user?.id;
+    if (!uid) return null;
+    const { data } = await db.from('merchants').select('*').eq('owner_id', uid).maybeSingle();
+    return data || null;
+  }
+
   async function loadOrders() {
     const merchant = await getMerchant();
     if (!merchant) return [];
@@ -21,14 +29,6 @@
       (grouped[o.id] ??= { ...o, items: [] }).items.push(i);
     });
     return Object.values(grouped).sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
-  }
-
-  async function getMerchant() {
-    const { data: session } = await db.auth.getSession();
-    const uid = session.session?.user?.id;
-    if (!uid) return null;
-    const { data } = await db.from('merchants').select('*').eq('owner_id', uid).maybeSingle();
-    return data || null;
   }
 
   function statusLabel(s) {
@@ -61,7 +61,7 @@
         </select>
       </div>
       <div class="order-summary">
-        <span>Umsatz: <strong>${money(active.reduce((s,o) => s + Number(o.items.reduce((x,i)=>x + Number(i.unit_price)*Number(i.quantity),0)),0))}</strong></span>
+        <span>Umsatz: <strong>${money(active.reduce((s,o) => s + o.items.reduce((x,i)=>x + Number(i.unit_price)*Number(i.quantity),0),0))}</strong></span>
         <span>Offene Bearbeitung: <strong>${counts.paid + counts.processing}</strong></span>
       </div>
       <div id="rkOrderList"></div>`;
@@ -91,14 +91,27 @@
     }
   };
 
-  const originalChange = window.changeOrderStatus;
   window.changeOrderStatus = async (id, status) => {
-    if (typeof originalChange === 'function') {
-      await originalChange(id, status);
-    } else {
-      const { error } = await db.rpc('merchant_set_order_status', { p_order_id: id, p_status: status });
-      if (error) return alert(error.message);
-    }
+    const { error } = await db.rpc('merchant_set_order_status', { p_order_id: id, p_status: status });
+    if (error) return alert(error.message);
+    if (typeof window.toast === 'function') window.toast('Bestellstatus aktualisiert');
+    await window.renderMerchantOrders('#orders');
+    await window.renderMerchantOrders('#ordersFull');
+  };
+
+  window.saveShipping = async (id) => {
+    const carrier = document.querySelector(`#carrier-${id}`)?.value.trim() || null;
+    const tracking = document.querySelector(`#tracking-${id}`)?.value.trim() || null;
+    const trackingUrl = document.querySelector(`#tracking-url-${id}`)?.value.trim() || null;
+    if (trackingUrl && !/^https?:\/\//i.test(trackingUrl)) return alert('Der Tracking-Link muss mit http:// oder https:// beginnen.');
+    const { error } = await db.rpc('merchant_update_shipping', {
+      p_order_id: id,
+      p_shipping_carrier: carrier,
+      p_tracking_number: tracking,
+      p_tracking_url: trackingUrl
+    });
+    if (error) return alert(error.message);
+    if (typeof window.toast === 'function') window.toast('Versanddaten gespeichert');
     await window.renderMerchantOrders('#orders');
     await window.renderMerchantOrders('#ordersFull');
   };
