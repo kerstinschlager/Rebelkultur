@@ -11,14 +11,14 @@
     const shopView=document.querySelector('#shopView'),grid=document.querySelector('#productGrid');
     if(!shopView||!grid)return;
     const {data:merchant,error}=await db.from('public_merchants').select('id,shop_name,slug,description,logo_url,shop_url').eq('slug',slug).maybeSingle();
-    if(error||!merchant){document.title='Händler-Shop | Rebelkultur Shops';grid.innerHTML='<div class="merchant-shop-empty"><strong>Dieser Händler-Shop ist nicht verfügbar.</strong><span>Der Link ist möglicherweise abgelaufen oder der Shop wurde nicht veröffentlicht.</span><a class="secondary" href="? #shop">← Zur Händlerübersicht</a></div>';return;}
+    if(error||!merchant){document.title='Händler-Shop | Rebelkultur Shops';grid.innerHTML='<div class="merchant-shop-empty"><strong>Dieser Händler-Shop ist nicht verfügbar.</strong><span>Der Link ist möglicherweise abgelaufen oder der Shop wurde nicht veröffentlicht.</span><a class="secondary" href="'+esc(location.pathname)+'#shop">← Zur Händlerübersicht</a></div>';return;}
     document.title=`${merchant.shop_name} | Rebelkultur Shops`;
     let meta=document.querySelector('meta[name="description"]');
     if(!meta){meta=document.createElement('meta');meta.name='description';document.head.appendChild(meta)}
     meta.content=`${merchant.shop_name} – Produkte und Angebote auf Rebelkultur Shops. ${merchant.description||''}`.slice(0,160);
     const external=safeUrl(merchant.shop_url);
     const hero=shopView.querySelector('.hero');
-    if(hero)hero.innerHTML=`<div><p class="eyebrow">HÄNDLER-SHOP</p><h1>${esc(merchant.shop_name)}</h1><p>${esc(merchant.description||'Entdecke die Produkte dieses Händlers auf Rebelkultur.')}</p><div class="merchant-shop-actions"><a class="secondary" href="?shop=${encodeURIComponent(merchant.slug)}#shop">Shop-Start</a>${external?`<a class="secondary" href="${esc(external)}" target="_blank" rel="noopener noreferrer">Externe Shop-Website öffnen</a>`:''}</div></div><div class="hero-card merchant-shop-logo">${merchant.logo_url?`<img src="${esc(merchant.logo_url)}" alt="${esc(merchant.shop_name)} Logo">`:'RK'}</div>`;
+    if(hero)hero.innerHTML=`<div><p class="eyebrow">HÄNDLER-SHOP</p><h1>${esc(merchant.shop_name)}</h1><p>${esc(merchant.description||'Entdecke die Produkte dieses Händlers auf Rebelkultur.')}</p><div class="merchant-shop-actions"><a class="secondary" href="${esc(location.pathname)}#shop">← Händlerübersicht</a>${external?`<a class="secondary" href="${esc(external)}" target="_blank" rel="noopener noreferrer">Externe Shop-Website öffnen</a>`:''}</div></div><div class="hero-card merchant-shop-logo">${merchant.logo_url?`<img src="${esc(merchant.logo_url)}" alt="${esc(merchant.shop_name)} Logo">`:'RK'}</div>`;
     const toolbar=shopView.querySelector('.toolbar');
     if(toolbar&&!toolbar.previousElementSibling?.classList.contains('merchant-shop-title')){const title=document.createElement('div');title.className='merchant-shop-title';title.innerHTML=`<strong>Produkte von ${esc(merchant.shop_name)}</strong>`;toolbar.parentNode.insertBefore(title,toolbar);}
     const {data:rows,error:prodError}=await db.from('products').select('id,name,slug,description,price,stock,image_url,created_at,category_id').eq('active',true).eq('merchant_id',merchant.id).order('created_at',{ascending:false});
