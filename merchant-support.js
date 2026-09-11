@@ -26,3 +26,4 @@
   document.addEventListener('click',e=>{if(e.target.closest('.dash-tab[data-tab="faq"]'))setTimeout(render,50)});
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',render);else render();
 })();
+(()=>{const s=document.createElement('script');s.src='merchant-customization.js?v=20260911-1';document.head.appendChild(s)})();
