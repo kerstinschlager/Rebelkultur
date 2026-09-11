@@ -10,7 +10,14 @@
   document.head.appendChild(style);
 
   function go(tab){
-    if (typeof window.setDashTab === 'function') window.setDashTab(tab);
+    // Design & Website is a custom panel, not an app.js dash-tab.
+    if(tab==='design' || tab==='customization'){
+      if(typeof window.openDesign==='function'){ window.openDesign(); }
+      else document.querySelector('.dash-tab[data-tab="design"]')?.click();
+      document.querySelectorAll('.rk-simple-nav [data-rk-tab]').forEach(b => b.classList.toggle('active', b.dataset.rkTab === 'design'));
+      return;
+    }
+    if(typeof window.setDashTab==='function') window.setDashTab(tab);
     else document.querySelector(`.dash-tab[data-tab="${tab}"]`)?.click();
     document.querySelectorAll('.rk-simple-nav [data-rk-tab]').forEach(b => b.classList.toggle('active', b.dataset.rkTab === tab));
   }
@@ -45,7 +52,7 @@
   }
 
   const oldSet = window.setDashTab;
-  if (typeof oldSet === 'function') window.setDashTab = function(tab){ const r=oldSet.apply(this,arguments); setTimeout(()=>document.querySelectorAll('#rkSimpleNav [data-rk-tab]').forEach(b=>b.classList.toggle('active',b.dataset.rkTab===tab)),0); return r; };
-  setTimeout(build, 100);
-  document.addEventListener('click', e => { if (e.target.closest('[data-view="dashboard"]')) setTimeout(build,100); });
+  if(typeof oldSet==='function') window.setDashTab=function(tab){ const r=oldSet.apply(this,arguments); setTimeout(()=>document.querySelectorAll('#rkSimpleNav [data-rk-tab]').forEach(b=>b.classList.toggle('active',b.dataset.rkTab===tab)),0); return r; };
+  setTimeout(build,100);
+  document.addEventListener('click',e=>{if(e.target.closest('[data-view="dashboard"]'))setTimeout(build,100);});
 })();
