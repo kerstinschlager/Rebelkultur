@@ -30,3 +30,14 @@ jobs:
             echo "Checking $file"
             node --check "$file"
           done
+
+  supabase-security:
+    name: Supabase SECURITY DEFINER safety
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check SECURITY DEFINER functions
+        shell: bash
+        run: bash scripts/check-supabase-security.sh
