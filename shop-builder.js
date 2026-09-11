@@ -38,7 +38,6 @@
     state.payments = !!m.stripe_account_id && !!m.stripe_onboarding_complete;
     state.legal = !!(l.data?.impressum && l.data?.datenschutz);
     state.seo = !!seo.data?.seo_title;
-    // Shipping is deliberately informational until a dedicated shipping settings store exists.
     state.shipping = false;
     return m;
   }
@@ -54,20 +53,17 @@
     let box=document.getElementById('rkShopBuilder');
     if(!box){ box=document.createElement('section'); box.id='rkShopBuilder'; box.className='rk-builder'; host.prepend(box); }
     const steps=[
-      ['design','Design auswählen','Wähle ein professionelles Layout für deinen Shop.','Design & Website','Design wählen'],
+      ['design','Design auswählen','Wähle ein professionelles Layout für deinen Shop.','design','Design wählen'],
       ['products','Produkte hinzufügen','Mindestens ein Produkt ist nötig, bevor dein Shop starten kann.','products','Produkt hinzufügen'],
       ['payments','Zahlungen verbinden','Verbinde Stripe, damit Kunden sicher bezahlen können.','settings','Zahlungen einrichten'],
       ['shipping','Versand festlegen','Lege fest, wie Bestellungen versendet und abgewickelt werden.','settings','Versand einrichten'],
       ['legal','Rechtliches hinterlegen','Impressum und Datenschutz sollten vor der Veröffentlichung vorhanden sein.','legal','Rechtliches öffnen'],
-      ['seo','Bei Google besser gefunden werden','Hinterlege einen Seitentitel für Suchmaschinen.','Design & Website','SEO einrichten']
+      ['seo','Bei Google besser gefunden werden','Hinterlege einen Seitentitel für Suchmaschinen.','design','SEO einrichten']
     ];
     const done=steps.filter(x=>state[x[0]]).length, pct=Math.round(done/steps.length*100);
     box.innerHTML=`<div class="rk-builder-head"><div><h3>Dein Shop ist fast startklar</h3><p>Rebelkultur führt dich Schritt für Schritt durch die Einrichtung.</p></div><div class="rk-builder-percent">${pct}%</div></div><div class="rk-builder-progress"><span style="width:${pct}%"></span></div><div class="rk-builder-body">${steps.map((s,i)=>`<div class="rk-builder-step ${state[s[0]]?'done':''}"><div class="rk-builder-icon">${state[s[0]]?'✓':i+1}</div><div class="rk-builder-copy"><strong>${esc(s[1])}</strong><small>${esc(s[2])}</small></div>${state[s[0]]?'<span aria-label="Erledigt">✓</span>':`<button class="rk-builder-action" data-builder-tab="${esc(s[3])}">${esc(s[4])}</button>`}</div>`).join('')}<div class="rk-builder-open"><button class="secondary" id="rkOpenDesign">Shop gestalten &amp; Vorschau öffnen</button></div></div>`;
-    box.querySelectorAll('[data-builder-tab]').forEach(b=>b.addEventListener('click',()=>{
-      const t=b.dataset.builderTab;
-      if(t==='Design & Website') go('customization'); else go(t);
-    }));
-    box.querySelector('#rkOpenDesign')?.addEventListener('click',()=>go('customization'));
+    box.querySelectorAll('[data-builder-tab]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.builderTab)));
+    box.querySelector('#rkOpenDesign')?.addEventListener('click',()=>go('design'));
   }
 
   async function refresh(){ await loadState(); render(); }
