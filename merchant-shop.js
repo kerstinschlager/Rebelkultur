@@ -4,6 +4,7 @@
   const db=window.supabase.createClient(URL,KEY);
   const esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
   const safeUrl=v=>{try{const u=new URL(String(v||''),location.href);return /^https?:$/.test(u.protocol)?u.href:''}catch(e){return ''}};
+  const safeColor=v=>{const s=String(v||'').trim();return /^#[0-9a-fA-F]{3,8}$/.test(s)?s:''};
   const money=n=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(n)||0);
   const params=new URLSearchParams(location.search),slug=params.get('shop');
   if(!slug)return;
@@ -16,9 +17,27 @@
     let meta=document.querySelector('meta[name="description"]');
     if(!meta){meta=document.createElement('meta');meta.name='description';document.head.appendChild(meta)}
     meta.content=`${merchant.shop_name} – Produkte und Angebote auf Rebelkultur Shops. ${merchant.description||''}`.slice(0,160);
+
+    let site={};
+    try{const r=await db.rpc('public_merchant_site_content',{p_slug:slug});site=(Array.isArray(r.data)?r.data[0]:r.data)||{}}catch(e){}
+    const theme=String(site.theme||'modern').toLowerCase().replace(/[^a-z]/g,'')||'modern';
+    const primary=safeColor(site.primary_color),secondary=safeColor(site.secondary_color);
+    document.body.classList.add('theme-'+theme);
     const external=safeUrl(merchant.shop_url);
     const hero=shopView.querySelector('.hero');
-    if(hero)hero.innerHTML=`<div><p class="eyebrow">HÄNDLER-SHOP</p><h1>${esc(merchant.shop_name)}</h1><p>${esc(merchant.description||'Entdecke die Produkte dieses Händlers auf Rebelkultur.')}</p><div class="merchant-shop-actions"><a class="secondary" href="${esc(location.pathname)}#shop">← Händlerübersicht</a>${external?`<a class="secondary" href="${esc(external)}" target="_blank" rel="noopener noreferrer">Externe Shop-Website öffnen</a>`:''}</div></div><div class="hero-card merchant-shop-logo">${merchant.logo_url?`<img src="${esc(merchant.logo_url)}" alt="${esc(merchant.shop_name)} Logo">`:'RK'}</div>`;
+    if(hero){
+      const title=site.hero_title||merchant.shop_name;
+      const text=site.hero_text||merchant.description||'Entdecke die Produkte dieses Händlers auf Rebelkultur.';
+      hero.classList.add('merchant-custom-hero');
+      hero.style.setProperty('--merchant-primary',primary||'');hero.style.setProperty('--merchant-secondary',secondary||'');
+      hero.innerHTML=`<div class="merchant-custom-copy"><p class="eyebrow">HÄNDLER-SHOP</p><h1>${esc(title)}</h1><p>${esc(text)}</p><div class="merchant-shop-actions"><a class="secondary" href="${esc(location.pathname)}#shop">← Händlerübersicht</a>${external?`<a class="secondary" href="${esc(external)}" target="_blank" rel="noopener noreferrer">Externe Shop-Website öffnen</a>`:''}</div></div>${site.banner_url?`<div class="merchant-banner"><img src="${esc(safeUrl(site.banner_url))}" alt="${esc(title)}"></div>`:`<div class="hero-card merchant-shop-logo">${merchant.logo_url?`<img src="${esc(merchant.logo_url)}" alt="${esc(merchant.shop_name)} Logo">`:'RK'}</div>`}`;
+    }
+    const blocks=Array.isArray(site.blocks)?site.blocks:[];
+    if(blocks.length){
+      const blockWrap=document.createElement('section');blockWrap.className='merchant-content-blocks';
+      blockWrap.innerHTML=blocks.map(b=>`<article><h3>${esc(typeof b==='string'?b:(b?.title||''))}</h3>${typeof b==='object'&&b?.text?`<p>${esc(b.text)}</p>`:''}</article>`).join('');
+      const toolbar=shopView.querySelector('.toolbar');if(toolbar)toolbar.parentNode.insertBefore(blockWrap,toolbar);else shopView.appendChild(blockWrap);
+    }
     const toolbar=shopView.querySelector('.toolbar');
     if(toolbar&&!toolbar.previousElementSibling?.classList.contains('merchant-shop-title')){const title=document.createElement('div');title.className='merchant-shop-title';title.innerHTML=`<strong>Produkte von ${esc(merchant.shop_name)}</strong>`;toolbar.parentNode.insertBefore(title,toolbar);}
     const {data:rows,error:prodError}=await db.from('products').select('id,name,slug,description,price,stock,image_url,created_at,category_id').eq('active',true).eq('merchant_id',merchant.id).order('created_at',{ascending:false});
@@ -36,7 +55,21 @@
     if(cf){const values=[...new Set(products.map(p=>cats[p.category_id]||'Produkte'))].sort();cf.innerHTML='<option value="all">Alle Kategorien</option>'+values.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');}
     ['search','categoryFilter','sort'].forEach(id=>document.querySelector('#'+id)?.addEventListener('input',render));
     const dir=document.querySelector('#merchantDirectory');if(dir)dir.remove();
-    const style=document.createElement('style');style.textContent='.merchant-shop-title{max-width:1180px;margin:28px auto -35px;padding:0 20px;font-size:18px}.merchant-shop-logo{overflow:hidden}.merchant-shop-logo img{width:100%;height:100%;object-fit:contain;border-radius:16px}.merchant-shop-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.merchant-shop-actions a{text-decoration:none}.merchant-shop-empty{padding:32px 20px;margin:20px 0;border:1px dashed #d7d0e2;border-radius:16px;background:#ffffffb8;text-align:center}.merchant-shop-empty strong{display:block;margin-bottom:6px}.merchant-shop-empty span{display:block;color:#6f6878;margin-bottom:15px}.merchant-shop-empty a{display:inline-block;text-decoration:none}';document.head.appendChild(style);
+    const style=document.createElement('style');style.textContent=`
+      .merchant-shop-title{max-width:1180px;margin:28px auto -35px;padding:0 20px;font-size:18px}
+      .merchant-shop-logo{overflow:hidden}.merchant-shop-logo img{width:100%;height:100%;object-fit:contain;border-radius:16px}
+      .merchant-custom-hero{--merchant-primary:#7d4dff;--merchant-secondary:#c8ff24}
+      .merchant-custom-hero h1{color:var(--merchant-primary)}
+      .merchant-custom-hero .secondary:hover{border-color:var(--merchant-primary)}
+      .merchant-banner{min-height:180px;max-height:340px;overflow:hidden;border-radius:18px;background:var(--merchant-secondary);display:flex;align-items:center;justify-content:center}
+      .merchant-banner img{width:100%;height:100%;max-height:340px;object-fit:cover;display:block}
+      .merchant-content-blocks{max-width:1180px;margin:24px auto;padding:0 20px;display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+      .merchant-content-blocks article{padding:18px;border:1px solid #e0d8e8;border-radius:15px;background:#fff}
+      .merchant-content-blocks h3{margin:0 0 7px}.merchant-content-blocks p{margin:0;color:#6f6878}
+      .merchant-shop-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.merchant-shop-actions a{text-decoration:none}
+      .merchant-shop-empty{padding:32px 20px;margin:20px 0;border:1px dashed #d7d0e2;border-radius:16px;background:#ffffffb8;text-align:center}.merchant-shop-empty strong{display:block;margin-bottom:6px}.merchant-shop-empty span{display:block;color:#6f6878;margin-bottom:15px}.merchant-shop-empty a{display:inline-block;text-decoration:none}
+      @media(max-width:700px){.merchant-content-blocks{grid-template-columns:1fr}.merchant-banner{min-height:140px}}
+    `;document.head.appendChild(style);
     render();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(init,1300));else setTimeout(init,1300);
