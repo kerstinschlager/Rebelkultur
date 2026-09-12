@@ -40,7 +40,7 @@
       else if(category){title.textContent='Passend zur Kategorie';text.textContent='Weitere passende Produkte aus verschiedenen Rebelkultur Shops.'}
       else if(currentShop){title.textContent='Auch interessant';text.textContent='Produkte aus anderen Rebelkultur Shops, passend zu deinem Besuch.'}
       else{title.textContent='Für dich entdeckt';text.textContent='Automatisch nach Interesse, Aktualität und Relevanz zusammengestellt.'}
-      const candidates=rows.filter(p=>!category||String(p.category_id)===String(category));
+      const candidates=rows.filter(p=>!category||String(cats[p.category_id]||'')===String(category));
       const ranked=[...candidates].sort((a,b)=>score(b,search)-score(a,search));
       const pool=ranked.length?[...ranked.slice(offset),...ranked.slice(0,offset)]:[],list=[],used=new Set(),wishes=new Set(getWishlist());
       for(const p of pool){if(currentShop&&merchants[p.merchant_id]?.slug===currentShop)continue;if(list.length>=6)break;if(!used.has(p.merchant_id)||list.length>=4){list.push(p);used.add(p.merchant_id)}}
@@ -48,7 +48,7 @@
       document.querySelectorAll('[data-rk-product]').forEach(a=>a.addEventListener('click',()=>{const p=getProfile();p.products[a.dataset.rkProduct]=(p.products[a.dataset.rkProduct]||0)+1;if(a.dataset.rkCategory)p.categories[a.dataset.rkCategory]=(p.categories[a.dataset.rkCategory]||0)+1;if(a.dataset.rkMerchant)p.merchants[a.dataset.rkMerchant]=(p.merchants[a.dataset.rkMerchant]||0)+1;saveProfile(p)}));
       document.querySelectorAll('[data-wish]').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const id=String(btn.dataset.wish),a=getWishlist(),i=a.indexOf(id);if(i>=0){a.splice(i,1);btn.textContent='♡';btn.classList.remove('saved');btn.setAttribute('aria-label','Auf Merkliste setzen');toastA('Aus der Merkliste entfernt')}else{a.unshift(id);btn.textContent='♥';btn.classList.add('saved');btn.setAttribute('aria-label','Aus Merkliste entfernen');toastA('Auf Merkliste gespeichert')}saveWishlist(a);if(window.rkRenderWishlist)window.rkRenderWishlist()}));
     };
-    document.querySelector('#rkShuffle')?.addEventListener('click',()=>{const n=rows.filter(p=>!getCategory()||String(p.category_id)===String(getCategory())).length;offset=(offset+6)%Math.max(1,n);render()});
+    document.querySelector('#rkShuffle')?.addEventListener('click',()=>{const n=rows.filter(p=>!getCategory()||String(cats[p.category_id]||'')===String(getCategory())).length;offset=(offset+6)%Math.max(1,n);render()});
     document.querySelector('#search')?.addEventListener('input',()=>{offset=0;render()});
     document.querySelector('#categoryFilter')?.addEventListener('change',()=>{offset=0;render()});
     render();
