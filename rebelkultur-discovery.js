@@ -26,13 +26,17 @@
     const profile=getProfile();let offset=0;
     const score=(p,q)=>{
       const text=(p.name+' '+(p.description||'')).toLowerCase(),query=(q||'').trim().toLowerCase();let s=0;
-      if(query){query.split(/\s+/).filter(Boolean).forEach(w=>{if(text.includes(w))s+=25;if((cats[p.category_id]||'').toLowerCase().includes(w))s+=35})}
-      s+=(profile.products[p.id]||0)*8+(profile.categories[p.category_id]||0)*5+(profile.merchants[p.merchant_id]||0)*2;
-      const age=Math.max(0,(Date.now()-new Date(p.created_at).getTime())/86400000);return s+Math.max(0,10-age*.35);
+      if(query){query.split(/\s+/).filter(Boolean).forEach(w=>{if(text.includes(w))s+=30;if((cats[p.category_id]||'').toLowerCase().includes(w))s+=45})}
+      const productInterest=profile.products[p.id]||0,categoryInterest=profile.categories[p.category_id]||0,merchantInterest=profile.merchants[p.merchant_id]||0;
+      s+=productInterest*10+categoryInterest*7+merchantInterest*3;
+      if(p.description)s+=3;if(p.image_url)s+=3;
+      const age=Math.max(0,(Date.now()-new Date(p.created_at).getTime())/86400000);
+      s+=Math.max(0,12-age*.4);
+      return s;
     };
     const render=()=>{
       const search=document.querySelector('#search')?.value||'';const category=document.querySelector('#categoryFilter')?.value||'';const title=document.querySelector('#rkDiscoveryTitle'),text=document.querySelector('#rkDiscoveryText');
-      if(search.trim()){title.textContent='Passend zu deiner Suche';text.textContent='Rebelkultur durchsucht Händler und Produkte gemeinsam – nicht nur einen einzelnen Shop.'}else if(category){title.textContent='Passend zur Kategorie';text.textContent='Entdecke weitere passende Produkte aus verschiedenen Rebelkultur Shops.'}else if(currentShop){title.textContent='Auch interessant';text.textContent='Weitere Produkte aus anderen Rebelkultur Shops – passend zu deinem aktuellen Besuch.'}else{title.textContent='Für dich entdeckt';text.textContent='Interessante Produkte aus verschiedenen Rebelkultur Shops – automatisch für dich zusammengestellt.'}
+      if(search.trim()){title.textContent='Passend zu deiner Suche';text.textContent='Rebelkultur durchsucht Händler und Produkte gemeinsam – nicht nur einen einzelnen Shop.'}else if(category){title.textContent='Passend zur Kategorie';text.textContent='Entdecke weitere passende Produkte aus verschiedenen Rebelkultur Shops.'}else if(currentShop){title.textContent='Auch interessant';text.textContent='Weitere Produkte aus anderen Rebelkultur Shops – passend zu deinem aktuellen Besuch.'}else{title.textContent='Für dich entdeckt';text.textContent='Rebelkultur stellt Produkte automatisch nach Interesse, Aktualität und Relevanz zusammen.'}
       const candidates=rows.filter(p=>!category||String(p.category_id)===String(category));
       const ranked=[...candidates].sort((a,b)=>score(b,search)-score(a,search));const pool=ranked.length?[...ranked.slice(offset),...ranked.slice(0,offset)]:[];const list=[];const usedMerchants=new Set();const wishes=new Set(getWishlist());
       for(const p of pool){if(currentShop&&merchants[p.merchant_id]?.slug===currentShop)continue;if(list.length>=6)break;if(!usedMerchants.has(p.merchant_id)||list.length>=4){list.push(p);usedMerchants.add(p.merchant_id)}}
