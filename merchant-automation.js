@@ -1,98 +1,32 @@
-(() => {
-  const U = window.__RK_SUPABASE_URL;
-  const K = window.__RK_SUPABASE_KEY;
-  if (!U || !K || !window.supabase?.createClient) return;
-  const db = window.supabase.createClient(U, K);
-
-  const esc = (v) => String(v ?? '').replace(/[&<>\"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
-  const css = `
-    .rk-auto{margin:0 0 22px;border:1px solid #e5e7eb;border-radius:18px;background:#fff;box-shadow:0 8px 28px rgba(15,23,42,.05);overflow:hidden}
-    .rk-auto-head{padding:20px 22px;border-bottom:1px solid #eef0f3;display:flex;justify-content:space-between;gap:16px;align-items:center}
-    .rk-auto-head h3{margin:0 0 4px;font-size:20px}.rk-auto-head p{margin:0;color:#6b7280}.rk-auto-badge{border:1px solid #d1d5db;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;white-space:nowrap}
-    .rk-auto-body{padding:18px 22px}.rk-auto-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}.rk-auto-stat{background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:13px}.rk-auto-stat strong{display:block;font-size:20px}.rk-auto-stat span{color:#6b7280;font-size:12px}
-    .rk-auto-task{display:flex;gap:12px;align-items:flex-start;padding:13px 0;border-top:1px solid #eef0f3}.rk-auto-task:first-child{border-top:0}.rk-auto-task .ico{width:30px;height:30px;border-radius:50%;background:#f3f4f6;display:grid;place-items:center;flex:0 0 auto}.rk-auto-task main{flex:1}.rk-auto-task strong{display:block}.rk-auto-task small{display:block;color:#6b7280;margin-top:3px}.rk-auto-btn{border:1px solid #d1d5db;background:#fff;border-radius:9px;padding:8px 11px;cursor:pointer;font-weight:600}.rk-auto-btn:hover{background:#f9fafb}.rk-auto-social{margin-top:14px;padding:14px;border-radius:12px;background:#f8fafc;border:1px solid #e5e7eb}.rk-auto-social textarea{width:100%;min-height:84px;box-sizing:border-box;margin-top:8px;border:1px solid #d1d5db;border-radius:9px;padding:9px;resize:vertical}.rk-auto-social button{margin-top:8px}
-    @media(max-width:700px){.rk-auto-stats{grid-template-columns:1fr}.rk-auto-task{flex-wrap:wrap}.rk-auto-btn{margin-left:42px}}
-  `;
-  if (!document.getElementById('rk-auto-style')) { const s=document.createElement('style'); s.id='rk-auto-style'; s.textContent=css; document.head.appendChild(s); }
-
-  let merchant=null, products=[], seo=null;
-
+(()=>{
+  const U=window.__RK_SUPABASE_URL,K=window.__RK_SUPABASE_KEY;if(!U||!K||!window.supabase?.createClient)return;
+  const db=window.supabase.createClient(U,K);
+  const esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
+  const css=`.rk-auto{margin:0 0 22px;border:1px solid #e5e7eb;border-radius:18px;background:#fff;box-shadow:0 8px 28px rgba(15,23,42,.05);overflow:hidden}.rk-auto-head{padding:20px 22px;border-bottom:1px solid #eef0f3;display:flex;justify-content:space-between;gap:16px;align-items:center}.rk-auto-head h3{margin:0 0 4px;font-size:20px}.rk-auto-head p{margin:0;color:#6b7280}.rk-auto-badge{border:1px solid #d1d5db;border-radius:999px;padding:6px 10px;font-size:12px;font-weight:700;white-space:nowrap}.rk-auto-body{padding:18px 22px}.rk-auto-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}.rk-auto-stat{background:#f8fafc;border:1px solid #e5e7eb;border-radius:12px;padding:13px}.rk-auto-stat strong{display:block;font-size:20px}.rk-auto-stat span{color:#6b7280;font-size:12px}.rk-auto-task{display:flex;gap:12px;align-items:flex-start;padding:13px 0;border-top:1px solid #eef0f3}.rk-auto-task .ico{width:30px;height:30px;border-radius:50%;background:#f3f4f6;display:grid;place-items:center;flex:0 0 auto}.rk-auto-task main{flex:1}.rk-auto-task strong{display:block}.rk-auto-task small{display:block;color:#6b7280;margin-top:3px}.rk-auto-btn{border:1px solid #d1d5db;background:#fff;border-radius:9px;padding:8px 11px;cursor:pointer;font-weight:600}.rk-auto-btn:hover{background:#f9fafb}.rk-auto-social{margin-top:14px;padding:14px;border-radius:12px;background:#f8fafc;border:1px solid #e5e7eb}.rk-auto-social textarea{width:100%;min-height:84px;box-sizing:border-box;margin-top:8px;border:1px solid #d1d5db;border-radius:9px;padding:9px;resize:vertical}.rk-auto-social button{margin-top:8px}.rk-auto-opps{margin-top:14px;padding:14px;border:1px solid #e5e7eb;border-radius:12px}.rk-auto-opps h4{margin:0 0 8px}.rk-auto-opp{padding:9px 0;border-top:1px solid #eef0f3}.rk-auto-opp:first-of-type{border-top:0}.rk-auto-opp strong{display:block}.rk-auto-opp small{color:#6b7280}@media(max-width:700px){.rk-auto-stats{grid-template-columns:1fr}.rk-auto-task{flex-wrap:wrap}.rk-auto-btn{margin-left:42px}}
+`;
+  if(!document.getElementById('rk-auto-style')){const s=document.createElement('style');s.id='rk-auto-style';s.textContent=css;document.head.appendChild(s)}
+  let merchant=null,products=[],seo=null,orders=[],analytics=null;
   async function load(){
-    const {data:{user}}=await db.auth.getUser(); if(!user) return false;
-    const {data:m}=await db.from('merchants').select('id,shop_name,slug,published,description').eq('owner_id',user.id).limit(1).maybeSingle();
-    if(!m) return false; merchant=m;
+    const {data:{user}}=await db.auth.getUser();if(!user)return false;
+    const {data:m}=await db.from('merchants').select('id,shop_name,slug,published,description').eq('owner_id',user.id).limit(1).maybeSingle();if(!m)return false;merchant=m;
     const [p,s]=await Promise.all([
-      db.from('products').select('id,name,description,image_url,price').eq('merchant_id',m.id).order('created_at',{ascending:false}),
+      db.from('products').select('id,name,description,image_url,price,stock,created_at').eq('merchant_id',m.id).order('created_at',{ascending:false}),
       db.from('merchant_seo_settings').select('seo_title,seo_description,seo_keywords,og_image_url').eq('merchant_id',m.id).maybeSingle()
     ]);
-    products=p.data||[]; seo=s.data||null; return true;
+    products=p.data||[];seo=s.data||null;
+    const ids=products.map(x=>x.id);orders=[];
+    if(ids.length){const {data:items}=await db.from('order_items').select('order_id,product_id,quantity,unit_price,orders!inner(id,status,created_at,merchant_id)').in('product_id',ids);const map=new Map();(items||[]).forEach(i=>{const o=i.orders;if(!o||o.merchant_id!==merchant.id||['new','cancelled'].includes(o.status))return;if(!map.has(o.id))map.set(o.id,{...o,items:[]});map.get(o.id).items.push(i)});orders=[...map.values()]}
+    try{const {data:a}=await db.rpc('merchant_analytics_summary',{p_merchant_id:m.id});analytics=a||null}catch{analytics=null}
+    return true;
   }
-
-  function shopUrl(){ return `${location.origin}${location.pathname}?shop=${encodeURIComponent(merchant.slug)}#shop`; }
-  function socialText(){
-    const p=products[0];
-    if(!p) return `Entdecke ${merchant.shop_name} auf Rebelkultur Shops.\n\n${shopUrl()}`;
-    return `Neu bei ${merchant.shop_name}: ${p.name}${p.price!=null?` für ${Number(p.price).toLocaleString('de-DE',{style:'currency',currency:'EUR'})}`:''}.\n\nJetzt entdecken: ${shopUrl()}\n\n#Rebelkultur #Shop #Neu`;
-  }
-
-  function generatedDescription(p){
-    const shop=merchant?.shop_name||'Rebelkultur Shop';
-    const name=String(p.name||'Dieses Produkt').trim();
-    return `${name} – entdecke dieses Produkt bei ${shop}. Hochwertig ausgewählt und direkt über den Rebelkultur Shop erhältlich. Jetzt entdecken und mehr über das Produkt erfahren.`.slice(0,320);
-  }
-
-  async function autoDescriptions(btn){
-    const missing=products.filter(p=>!String(p.description||'').trim());
-    if(!missing.length){render();return;}
-    btn.disabled=true; btn.textContent='Erstelle …';
-    for(const p of missing){
-      const {error}=await db.from('products').update({description:generatedDescription(p)}).eq('id',p.id).eq('merchant_id',merchant.id);
-      if(error){btn.disabled=false;btn.textContent='Erneut versuchen';if(typeof window.toast==='function')window.toast('Produkttexte konnten nicht vollständig gespeichert werden');await load();render();return;}
-    }
-    await load();
-    if(typeof window.toast==='function')window.toast(`${missing.length} Produktbeschreibung${missing.length===1?'':'en'} automatisch erstellt`);
-    render();
-  }
-
-  function render(){
-    const host=document.getElementById('dashboardOverview'); if(!host || !merchant) return;
-    let box=document.getElementById('rkAutomation');
-    if(!box){box=document.createElement('section');box.id='rkAutomation';box.className='rk-auto';const builder=document.getElementById('rkShopBuilder');(builder?builder.after(box):host.prepend(box));}
-    const missingDesc=products.filter(p=>!String(p.description||'').trim()).length;
-    const missingImages=products.filter(p=>!String(p.image_url||'').trim()).length;
-    const seoReady=!!(seo?.seo_title);
-    const tasks=[];
-    if(!seoReady) tasks.push({icon:'🔎',title:'SEO automatisch vorbereiten',text:'Rebelkultur kann einen passenden Seitentitel und eine Meta-Beschreibung aus deinen Shopdaten erzeugen.',action:'seo'});
-    if(missingDesc) tasks.push({icon:'✍️',title:`${missingDesc} Produkt${missingDesc===1?'':'e'} ohne Beschreibung`,text:'Rebelkultur kann einfache, suchmaschinenfreundliche Basisbeschreibungen automatisch erstellen.',action:'descriptions'});
-    if(missingImages) tasks.push({icon:'🖼️',title:`${missingImages} Produkt${missingImages===1?'':'e'} ohne Bild`,text:'Produkte mit guten Bildern werden auf der Plattform sichtbarer.',action:'products'});
-    if(!tasks.length) tasks.push({icon:'✓',title:'Alles Wichtige ist vorbereitet',text:'Rebelkultur hat aktuell keine dringende Optimierung gefunden.',action:null});
-    box.innerHTML=`<div class="rk-auto-head"><div><h3>🤖 Rebelkultur Automatik</h3><p>Wir suchen nach einfachen Verbesserungen, die Reichweite und Verkäufe unterstützen.</p></div><span class="rk-auto-badge">AKTIV</span></div><div class="rk-auto-body"><div class="rk-auto-stats"><div class="rk-auto-stat"><strong>${products.length}</strong><span>Produkte überwacht</span></div><div class="rk-auto-stat"><strong>${seoReady?'✓':'—'}</strong><span>SEO-Grundlage</span></div><div class="rk-auto-stat"><strong>${missingDesc+missingImages}</strong><span>Optimierungen gefunden</span></div></div>${tasks.map(t=>`<div class="rk-auto-task"><div class="ico">${t.icon}</div><main><strong>${esc(t.title)}</strong><small>${esc(t.text)}</small></main>${t.action?`<button class="rk-auto-btn" data-auto-action="${t.action}">${t.action==='seo'||t.action==='descriptions'?'Automatisch erstellen':'Öffnen'}</button>`:''}</div>`).join('')}<div class="rk-auto-social"><strong>📣 Fertigen Social-Post erstellen</strong><textarea id="rkAutoSocial" readonly>${esc(socialText())}</textarea><button class="rk-auto-btn" id="rkCopySocial">Text kopieren</button></div></div>`;
-    box.querySelectorAll('[data-auto-action]').forEach(b=>b.addEventListener('click',async()=>{
-      if(b.dataset.autoAction==='seo') await autoSeo(b); else if(b.dataset.autoAction==='descriptions') await autoDescriptions(b); else go('products');
-    }));
-    box.querySelector('#rkCopySocial')?.addEventListener('click',async()=>{
-      const text=box.querySelector('#rkAutoSocial')?.value||'';
-      try{await navigator.clipboard.writeText(text); if(typeof window.toast==='function') window.toast('Social-Post kopiert');}catch{box.querySelector('#rkAutoSocial')?.select();}
-    });
-  }
-
-  async function autoSeo(btn){
-    if(!merchant) return;
-    btn.disabled=true; btn.textContent='Erstelle …';
-    const title=(merchant.shop_name||'Rebelkultur Shop').slice(0,70);
-    const first=products[0]?.name;
-    const description=((merchant.description||`Entdecke Produkte von ${merchant.shop_name||'diesem Händler'} bei Rebelkultur Shops.`)+(first?` ${first} und weitere Produkte entdecken.`:'' )).slice(0,160);
-    const {error}=await db.rpc('merchant_save_seo',{p_merchant_id:merchant.id,p_seo_title:title,p_seo_description:description,p_seo_keywords:'Rebelkultur, Shop, '+(merchant.shop_name||''),p_og_image_url:null});
-    if(error){btn.disabled=false;btn.textContent='Erneut versuchen';if(typeof window.toast==='function')window.toast('SEO konnte nicht gespeichert werden');return;}
-    seo={seo_title:title,seo_description:description}; render(); if(typeof window.toast==='function')window.toast('SEO automatisch erstellt');
-  }
-
-  function go(tab){
-    if(typeof window.setDashTab==='function') window.setDashTab(tab); else document.querySelector(`.dash-tab[data-tab="${tab}"]`)?.click();
-    window.scrollTo({top:0,behavior:'smooth'});
-  }
-
-  async function refresh(){if(await load()) render();}
-  setTimeout(refresh,700);
-  document.addEventListener('click',e=>{const t=e.target.closest('.dash-tab');if(t&&t.dataset.tab==='overview')setTimeout(refresh,120);});
+  function shopUrl(){return `${location.origin}${location.pathname}?shop=${encodeURIComponent(merchant.slug)}#shop`}
+  function socialText(){const p=products[0];if(!p)return `Entdecke ${merchant.shop_name} auf Rebelkultur Shops.\n\n${shopUrl()}`;return `Neu bei ${merchant.shop_name}: ${p.name}${p.price!=null?` für ${Number(p.price).toLocaleString('de-DE',{style:'currency',currency:'EUR'})}`:''}.\n\nJetzt entdecken: ${shopUrl()}\n\n#Rebelkultur #Shop #Neu`}
+  function generatedDescription(p){const shop=merchant?.shop_name||'Rebelkultur Shop';const name=String(p.name||'Dieses Produkt').trim();return `${name} – entdecke dieses Produkt bei ${shop}. Hochwertig ausgewählt und direkt über den Rebelkultur Shop erhältlich. Jetzt entdecken und mehr über das Produkt erfahren.`.slice(0,320)}
+  async function autoDescriptions(btn){const missing=products.filter(p=>!String(p.description||'').trim());if(!missing.length){render();return}btn.disabled=true;btn.textContent='Erstelle …';for(const p of missing){const {error}=await db.from('products').update({description:generatedDescription(p)}).eq('id',p.id).eq('merchant_id',merchant.id);if(error){btn.disabled=false;btn.textContent='Erneut versuchen';if(typeof window.toast==='function')window.toast('Produkttexte konnten nicht vollständig gespeichert werden');await load();render();return}}await load();if(typeof window.toast==='function')window.toast(`${missing.length} Produktbeschreibung${missing.length===1?'':'en'} automatisch erstellt`);render()}
+  async function autoSeo(btn){if(!merchant)return;btn.disabled=true;btn.textContent='Erstelle …';const title=(merchant.shop_name||'Rebelkultur Shop').slice(0,70);const first=products[0]?.name;const description=((merchant.description||`Entdecke Produkte von ${merchant.shop_name||'diesem Händler'} bei Rebelkultur Shops.`)+(first?` ${first} und weitere Produkte entdecken.`:'' )).slice(0,160);const {error}=await db.rpc('merchant_save_seo',{p_merchant_id:merchant.id,p_seo_title:title,p_seo_description:description,p_seo_keywords:'Rebelkultur, Shop, '+(merchant.shop_name||''),p_og_image_url:null});if(error){btn.disabled=false;btn.textContent='Erneut versuchen';if(typeof window.toast==='function')window.toast('SEO konnte nicht gespeichert werden');return}seo={seo_title:title,seo_description:description};render();if(typeof window.toast==='function')window.toast('SEO automatisch erstellt')}
+  function go(tab){if(typeof window.setDashTab==='function')window.setDashTab(tab);else document.querySelector(`.dash-tab[data-tab="${tab}"]`)?.click();window.scrollTo({top:0,behavior:'smooth'})}
+  function opportunityList(){const out=[];const sold={};orders.forEach(o=>o.items.forEach(i=>{sold[i.product_id]=(sold[i.product_id]||0)+Number(i.quantity||0)}));products.forEach(p=>{const n=sold[p.id]||0;if(n>=3)out.push(['🔥',`${p.name} läuft gut`,`Bereits ${n} Artikel verkauft. Rebelkultur kann dieses Produkt in Empfehlungen stärker gewichten.`]);if(n===0&&Number(p.stock||0)>0)out.push(['💡',`${p.name} braucht mehr Aufmerksamkeit`,'Noch kein Verkauf erfasst. Prüfe Bild, Beschreibung und Sichtbarkeit.'])});if(orders.length>=3)out.push(['📈','Shop zeigt Verkaufssignale',`${orders.length} Bestellungen erfasst. Nutze erfolgreiche Produkte als Ausgangspunkt für weitere Empfehlungen.`]);return out.slice(0,4)}
+  function render(){const host=document.getElementById('dashboardOverview');if(!host||!merchant)return;let box=document.getElementById('rkAutomation');if(!box){box=document.createElement('section');box.id='rkAutomation';box.className='rk-auto';const builder=document.getElementById('rkShopBuilder');builder?builder.after(box):host.prepend(box)}const missingDesc=products.filter(p=>!String(p.description||'').trim()).length,missingImages=products.filter(p=>!String(p.image_url||'').trim()).length,seoReady=!!seo?.seo_title;const tasks=[];if(!seoReady)tasks.push({icon:'🔎',title:'SEO automatisch vorbereiten',text:'Rebelkultur kann einen passenden Seitentitel und eine Meta-Beschreibung aus deinen Shopdaten erzeugen.',action:'seo'});if(missingDesc)tasks.push({icon:'✍️',title:`${missingDesc} Produkt${missingDesc===1?'':'e'} ohne Beschreibung`,text:'Rebelkultur kann suchmaschinenfreundliche Basisbeschreibungen automatisch erstellen.',action:'descriptions'});if(missingImages)tasks.push({icon:'🖼️',title:`${missingImages} Produkt${missingImages===1?'':'e'} ohne Bild`,text:'Produkte mit guten Bildern werden auf der Plattform sichtbarer.',action:'products'});if(!tasks.length)tasks.push({icon:'✓',title:'Grundoptimierung erledigt',text:'Rebelkultur hat aktuell keine dringende Basis-Optimierung gefunden.',action:null});const opp=opportunityList();box.innerHTML=`<div class="rk-auto-head"><div><h3>🤖 Rebelkultur Automatik</h3><p>Rebelkultur erkennt Verbesserungen und Verkaufschancen, damit du weniger selbst erledigen musst.</p></div><span class="rk-auto-badge">AKTIV</span></div><div class="rk-auto-body"><div class="rk-auto-stats"><div class="rk-auto-stat"><strong>${products.length}</strong><span>Produkte überwacht</span></div><div class="rk-auto-stat"><strong>${seoReady?'✓':'—'}</strong><span>SEO-Grundlage</span></div><div class="rk-auto-stat"><strong>${opp.length+missingDesc+missingImages}</strong><span>Chancen erkannt</span></div></div>${tasks.map(t=>`<div class="rk-auto-task"><div class="ico">${t.icon}</div><main><strong>${esc(t.title)}</strong><small>${esc(t.text)}</small></main>${t.action?`<button class="rk-auto-btn" data-auto-action="${t.action}">${t.action==='seo'||t.action==='descriptions'?'Automatisch erstellen':'Öffnen'}</button>`:''}</div>`).join('')}${opp.length?`<div class="rk-auto-opps"><h4>🎯 Verkaufschancen</h4>${opp.map(o=>`<div class="rk-auto-opp"><strong>${o[0]} ${esc(o[1])}</strong><small>${esc(o[2])}</small></div>`).join('')}</div>`:''}<div class="rk-auto-social"><strong>📣 Fertigen Social-Post erstellen</strong><textarea id="rkAutoSocial" readonly>${esc(socialText())}</textarea><button class="rk-auto-btn" id="rkCopySocial">Text kopieren</button></div></div>`;box.querySelectorAll('[data-auto-action]').forEach(b=>b.addEventListener('click',async()=>{if(b.dataset.autoAction==='seo')await autoSeo(b);else if(b.dataset.autoAction==='descriptions')await autoDescriptions(b);else go('products')}));box.querySelector('#rkCopySocial')?.addEventListener('click',async()=>{const text=box.querySelector('#rkAutoSocial')?.value||'';try{await navigator.clipboard.writeText(text);if(typeof window.toast==='function')window.toast('Social-Post kopiert')}catch{box.querySelector('#rkAutoSocial')?.select()}})}
+  async function refresh(){if(await load())render()}
+  setTimeout(refresh,700);document.addEventListener('click',e=>{const t=e.target.closest('.dash-tab');if(t&&t.dataset.tab==='overview')setTimeout(refresh,120)});
 })();
