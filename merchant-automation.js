@@ -22,7 +22,7 @@
     const {data:m}=await db.from('merchants').select('id,shop_name,slug,published,description').eq('owner_id',user.id).limit(1).maybeSingle();
     if(!m) return false; merchant=m;
     const [p,s]=await Promise.all([
-      db.from('products').select('id,name,description,image,price').eq('merchant_id',m.id).order('created_at',{ascending:false}),
+      db.from('products').select('id,name,description,image_url,price').eq('merchant_id',m.id).order('created_at',{ascending:false}),
       db.from('merchant_seo_settings').select('seo_title,seo_description,seo_keywords,og_image_url').eq('merchant_id',m.id).maybeSingle()
     ]);
     products=p.data||[]; seo=s.data||null; return true;
@@ -35,21 +35,40 @@
     return `Neu bei ${merchant.shop_name}: ${p.name}${p.price!=null?` für ${Number(p.price).toLocaleString('de-DE',{style:'currency',currency:'EUR'})}`:''}.\n\nJetzt entdecken: ${shopUrl()}\n\n#Rebelkultur #Shop #Neu`;
   }
 
+  function generatedDescription(p){
+    const shop=merchant?.shop_name||'Rebelkultur Shop';
+    const name=String(p.name||'Dieses Produkt').trim();
+    return `${name} – entdecke dieses Produkt bei ${shop}. Hochwertig ausgewählt und direkt über den Rebelkultur Shop erhältlich. Jetzt entdecken und mehr über das Produkt erfahren.`.slice(0,320);
+  }
+
+  async function autoDescriptions(btn){
+    const missing=products.filter(p=>!String(p.description||'').trim());
+    if(!missing.length){render();return;}
+    btn.disabled=true; btn.textContent='Erstelle …';
+    for(const p of missing){
+      const {error}=await db.from('products').update({description:generatedDescription(p)}).eq('id',p.id).eq('merchant_id',merchant.id);
+      if(error){btn.disabled=false;btn.textContent='Erneut versuchen';if(typeof window.toast==='function')window.toast('Produkttexte konnten nicht vollständig gespeichert werden');await load();render();return;}
+    }
+    await load();
+    if(typeof window.toast==='function')window.toast(`${missing.length} Produktbeschreibung${missing.length===1?'':'en'} automatisch erstellt`);
+    render();
+  }
+
   function render(){
     const host=document.getElementById('dashboardOverview'); if(!host || !merchant) return;
     let box=document.getElementById('rkAutomation');
     if(!box){box=document.createElement('section');box.id='rkAutomation';box.className='rk-auto';const builder=document.getElementById('rkShopBuilder');(builder?builder.after(box):host.prepend(box));}
     const missingDesc=products.filter(p=>!String(p.description||'').trim()).length;
-    const missingImages=products.filter(p=>!String(p.image||'').trim()).length;
+    const missingImages=products.filter(p=>!String(p.image_url||'').trim()).length;
     const seoReady=!!(seo?.seo_title);
     const tasks=[];
     if(!seoReady) tasks.push({icon:'🔎',title:'SEO automatisch vorbereiten',text:'Rebelkultur kann einen passenden Seitentitel und eine Meta-Beschreibung aus deinen Shopdaten erzeugen.',action:'seo'});
-    if(missingDesc) tasks.push({icon:'✍️',title:`${missingDesc} Produkt${missingDesc===1?'':'e'} ohne Beschreibung`,text:'Vollständige Produkttexte helfen Kunden und Suchmaschinen.',action:'products'});
+    if(missingDesc) tasks.push({icon:'✍️',title:`${missingDesc} Produkt${missingDesc===1?'':'e'} ohne Beschreibung`,text:'Rebelkultur kann einfache, suchmaschinenfreundliche Basisbeschreibungen automatisch erstellen.',action:'descriptions'});
     if(missingImages) tasks.push({icon:'🖼️',title:`${missingImages} Produkt${missingImages===1?'':'e'} ohne Bild`,text:'Produkte mit guten Bildern werden auf der Plattform sichtbarer.',action:'products'});
     if(!tasks.length) tasks.push({icon:'✓',title:'Alles Wichtige ist vorbereitet',text:'Rebelkultur hat aktuell keine dringende Optimierung gefunden.',action:null});
-    box.innerHTML=`<div class="rk-auto-head"><div><h3>🤖 Rebelkultur Automatik</h3><p>Wir suchen nach einfachen Verbesserungen, die Reichweite und Verkäufe unterstützen.</p></div><span class="rk-auto-badge">AKTIV</span></div><div class="rk-auto-body"><div class="rk-auto-stats"><div class="rk-auto-stat"><strong>${products.length}</strong><span>Produkte überwacht</span></div><div class="rk-auto-stat"><strong>${seoReady?'✓':'—'}</strong><span>SEO-Grundlage</span></div><div class="rk-auto-stat"><strong>${missingDesc+missingImages}</strong><span>Optimierungen gefunden</span></div></div>${tasks.map(t=>`<div class="rk-auto-task"><div class="ico">${t.icon}</div><main><strong>${esc(t.title)}</strong><small>${esc(t.text)}</small></main>${t.action?`<button class="rk-auto-btn" data-auto-action="${t.action}">${t.action==='seo'?'Automatisch erstellen':'Öffnen'}</button>`:''}</div>`).join('')}<div class="rk-auto-social"><strong>📣 Fertigen Social-Post erstellen</strong><textarea id="rkAutoSocial" readonly>${esc(socialText())}</textarea><button class="rk-auto-btn" id="rkCopySocial">Text kopieren</button></div></div>`;
+    box.innerHTML=`<div class="rk-auto-head"><div><h3>🤖 Rebelkultur Automatik</h3><p>Wir suchen nach einfachen Verbesserungen, die Reichweite und Verkäufe unterstützen.</p></div><span class="rk-auto-badge">AKTIV</span></div><div class="rk-auto-body"><div class="rk-auto-stats"><div class="rk-auto-stat"><strong>${products.length}</strong><span>Produkte überwacht</span></div><div class="rk-auto-stat"><strong>${seoReady?'✓':'—'}</strong><span>SEO-Grundlage</span></div><div class="rk-auto-stat"><strong>${missingDesc+missingImages}</strong><span>Optimierungen gefunden</span></div></div>${tasks.map(t=>`<div class="rk-auto-task"><div class="ico">${t.icon}</div><main><strong>${esc(t.title)}</strong><small>${esc(t.text)}</small></main>${t.action?`<button class="rk-auto-btn" data-auto-action="${t.action}">${t.action==='seo'||t.action==='descriptions'?'Automatisch erstellen':'Öffnen'}</button>`:''}</div>`).join('')}<div class="rk-auto-social"><strong>📣 Fertigen Social-Post erstellen</strong><textarea id="rkAutoSocial" readonly>${esc(socialText())}</textarea><button class="rk-auto-btn" id="rkCopySocial">Text kopieren</button></div></div>`;
     box.querySelectorAll('[data-auto-action]').forEach(b=>b.addEventListener('click',async()=>{
-      if(b.dataset.autoAction==='seo') await autoSeo(b); else go('products');
+      if(b.dataset.autoAction==='seo') await autoSeo(b); else if(b.dataset.autoAction==='descriptions') await autoDescriptions(b); else go('products');
     }));
     box.querySelector('#rkCopySocial')?.addEventListener('click',async()=>{
       const text=box.querySelector('#rkAutoSocial')?.value||'';
