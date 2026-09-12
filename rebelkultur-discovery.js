@@ -6,11 +6,12 @@
   const money=n=>new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR'}).format(Number(n)||0);
   const profileKey='rk_discovery_profile',wishKey='rk_wishlist';
   const getJSON=(k,f)=>{try{return JSON.parse(localStorage.getItem(k)||JSON.stringify(f))}catch{return f}};
-  const getProfile=()=>getJSON(profileKey,{products:{},categories:{},merchants:{}});
+  const getProfile=()=>{const p=getJSON(profileKey,{products:{},categories:{},merchants:{},queries:{}});p.products=p.products||{};p.categories=p.categories||{};p.merchants=p.merchants||{};p.queries=p.queries||{};return p};
   const saveProfile=p=>localStorage.setItem(profileKey,JSON.stringify(p));
   const getWishlist=()=>getJSON(wishKey,[]);
   const saveWishlist=a=>localStorage.setItem(wishKey,JSON.stringify(a));
   const toastA=t=>{if(typeof toast==='function')toast(t)};
+  const rememberQuery=q=>{const words=String(q||'').toLowerCase().trim().split(/\s+/).filter(w=>w.length>=3).slice(0,6);if(!words.length)return;const p=getProfile();words.forEach(w=>p.queries[w]=(p.queries[w]||0)+1);saveProfile(p)};
   async function init(){
     const shop=document.querySelector('#shopView'),grid=document.querySelector('#productGrid');
     if(!shop||!grid||document.querySelector('#rkDiscovery'))return;
@@ -24,10 +25,11 @@
     const mids=[...new Set(rows.map(p=>p.merchant_id).filter(Boolean))],cids=[...new Set(rows.map(p=>p.category_id).filter(Boolean))];
     if(mids.length){const r=await db.from('public_merchants').select('id,shop_name,slug').in('id',mids);if(!r.error)(r.data||[]).forEach(m=>merchants[m.id]=m)}
     if(cids.length){const r=await db.from('categories').select('id,name').in('id',cids);if(!r.error)(r.data||[]).forEach(c=>cats[c.id]=c.name)}
-    const profile=getProfile();let offset=0;
+    const profile=getProfile();let offset=0,queryTimer=null,lastRememberedQuery='';
     const score=(p,q)=>{
       const query=(q||'').trim().toLowerCase(),text=(p.name+' '+(p.description||'')).toLowerCase(),cat=(cats[p.category_id]||'').toLowerCase();let s=0;
       if(query)query.split(/\s+/).filter(Boolean).forEach(w=>{if(text.includes(w))s+=30;if(cat.includes(w))s+=45});
+      Object.entries(profile.queries||{}).forEach(([w,n])=>{if(text.includes(w))s+=Math.min(18,n*2);if(cat.includes(w))s+=Math.min(24,n*3)});
       s+=(profile.products[p.id]||0)*10+(profile.categories[p.category_id]||0)*7+(profile.merchants[p.merchant_id]||0)*3;
       if(p.description)s+=3;if(p.image_url)s+=3;
       const age=Math.max(0,(Date.now()-new Date(p.created_at).getTime())/86400000);s+=Math.max(0,12-age*.4);
@@ -49,7 +51,8 @@
       document.querySelectorAll('[data-wish]').forEach(btn=>btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();const id=String(btn.dataset.wish),a=getWishlist(),i=a.indexOf(id);if(i>=0){a.splice(i,1);btn.textContent='♡';btn.classList.remove('saved');btn.setAttribute('aria-label','Auf Merkliste setzen');toastA('Aus der Merkliste entfernt')}else{a.unshift(id);btn.textContent='♥';btn.classList.add('saved');btn.setAttribute('aria-label','Aus Merkliste entfernen');toastA('Auf Merkliste gespeichert')}saveWishlist(a);if(window.rkRenderWishlist)window.rkRenderWishlist()}));
     };
     document.querySelector('#rkShuffle')?.addEventListener('click',()=>{const n=rows.filter(p=>!getCategory()||String(cats[p.category_id]||'')===String(getCategory())).length;offset=(offset+6)%Math.max(1,n);render()});
-    document.querySelector('#search')?.addEventListener('input',()=>{offset=0;render()});
+    document.querySelector('#search')?.addEventListener('input',()=>{offset=0;clearTimeout(queryTimer);const q=document.querySelector('#search')?.value||'';queryTimer=setTimeout(()=>{if(q.trim()&&q.trim()!==lastRememberedQuery){rememberQuery(q);lastRememberedQuery=q;render()}},900);render()});
+    document.querySelector('#search')?.addEventListener('change',()=>{const q=document.querySelector('#search')?.value||'';if(q.trim()&&q.trim()!==lastRememberedQuery){rememberQuery(q);lastRememberedQuery=q;render()}});
     document.querySelector('#categoryFilter')?.addEventListener('change',()=>{offset=0;render()});
     render();
   }
