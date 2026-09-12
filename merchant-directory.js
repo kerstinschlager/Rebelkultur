@@ -4,7 +4,7 @@
   const db=window.supabase.createClient(URL,KEY);
   const esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
   let merchants=[];
-  function loadMerchantShop(){if(document.querySelector('script[data-merchant-shop]'))return;const s=document.createElement('script');s.src='merchant-shop.js?v=20260911-1';s.dataset.merchantShop='1';document.body.appendChild(s)}
+  function loadMerchantShop(){if(document.querySelector('script[data-merchant-shop]'))return;const s=document.createElement('script');s.src='merchant-shop.js?v=20260911-1';s.dataset.merchantShop='1';document.body.appendChild(s);const r=document.createElement('script');r.src='merchant-recommendations.js?v=20260912-1';r.dataset.merchantRecommendations='1';document.body.appendChild(r)}
   function mount(){
     if(new URLSearchParams(location.search).get('shop')){loadMerchantShop();return;}
     if(document.querySelector('#merchantDirectory'))return;
