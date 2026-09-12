@@ -9,7 +9,8 @@
   const saveProfile=p=>localStorage.setItem(key,JSON.stringify(p));
   async function init(){
     const shop=document.querySelector('#shopView'),grid=document.querySelector('#productGrid');
-    if(!shop||!grid||location.search.includes('shop='))return;
+    if(!shop||!grid)return;
+    const currentShop=new URLSearchParams(location.search).get('shop');
     const host=document.createElement('section');host.id='rkDiscovery';host.innerHTML=`<div class="rk-discovery-head"><div><span class="rk-kicker">REBELKULTUR ENTDECKEN</span><h2 id="rkDiscoveryTitle">Für dich entdeckt</h2><p id="rkDiscoveryText">Interessante Produkte aus verschiedenen Rebelkultur Shops – automatisch für dich zusammengestellt.</p></div><button type="button" class="secondary" id="rkShuffle">Neu entdecken</button></div><div class="rk-discovery-grid" id="rkDiscoveryGrid"><div class="muted">Entdecke gerade neue Produkte …</div></div>`;
     const toolbar=shop.querySelector('.toolbar');
     if(toolbar)toolbar.parentNode.insertBefore(host,toolbar);else grid.parentNode.insertBefore(host,grid);
@@ -31,12 +32,12 @@
     const render=()=>{
       const search=document.querySelector('#search')?.value||'';
       const title=document.querySelector('#rkDiscoveryTitle'),text=document.querySelector('#rkDiscoveryText');
-      if(search.trim()){title.textContent='Passend zu deiner Suche';text.textContent='Rebelkultur durchsucht Händler und Produkte gemeinsam – nicht nur einen einzelnen Shop.'}else{title.textContent='Für dich entdeckt';text.textContent='Interessante Produkte aus verschiedenen Rebelkultur Shops – automatisch für dich zusammengestellt.'}
+      if(search.trim()){title.textContent='Passend zu deiner Suche';text.textContent='Rebelkultur durchsucht Händler und Produkte gemeinsam – nicht nur einen einzelnen Shop.'}else if(currentShop){title.textContent='Auch interessant';text.textContent='Weitere Produkte aus anderen Rebelkultur Shops – passend zu deinem aktuellen Besuch.'}else{title.textContent='Für dich entdeckt';text.textContent='Interessante Produkte aus verschiedenen Rebelkultur Shops – automatisch für dich zusammengestellt.'}
       const ranked=[...rows].sort((a,b)=>score(b,search)-score(a,search));
       const pool=ranked.slice(offset).concat(ranked.slice(0,offset));
       const list=[];const usedMerchants=new Set();
-      for(const p of pool){if(list.length>=6)break;if(!usedMerchants.has(p.merchant_id)||list.length>=4){list.push(p);usedMerchants.add(p.merchant_id)}}
-      document.querySelector('#rkDiscoveryGrid').innerHTML=list.map(p=>{const m=merchants[p.merchant_id],cat=cats[p.category_id]||'Produkte';const href=m?.slug?`${location.pathname}?shop=${encodeURIComponent(m.slug)}#shop`: '#shop';return `<article class="rk-discovery-card"><a href="${esc(href)}" data-rk-product="${esc(p.id)}" data-rk-category="${esc(p.category_id||'')}" data-rk-merchant="${esc(p.merchant_id||'')}" aria-label="${esc(p.name)} ansehen">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}">`:'<div class="rk-discovery-placeholder">RK</div>'}<div class="rk-discovery-body"><span>${esc(cat)}</span><strong>${esc(p.name)}</strong><small>${esc(m?.shop_name||'Rebelkultur Händler')}</small><b>${money(p.price)}</b></div></a></article>`}).join('');
+      for(const p of pool){if(currentShop&&merchants[p.merchant_id]?.slug===currentShop)continue;if(list.length>=6)break;if(!usedMerchants.has(p.merchant_id)||list.length>=4){list.push(p);usedMerchants.add(p.merchant_id)}}
+      document.querySelector('#rkDiscoveryGrid').innerHTML=list.map(p=>{const m=merchants[p.merchant_id],cat=cats[p.category_id]||'Produkte';const href=m?.slug?`${location.pathname}?shop=${encodeURIComponent(m.slug)}#shop`:'#shop';return `<article class="rk-discovery-card"><a href="${esc(href)}" data-rk-product="${esc(p.id)}" data-rk-category="${esc(p.category_id||'')}" data-rk-merchant="${esc(p.merchant_id||'')}" aria-label="${esc(p.name)} ansehen">${p.image_url?`<img src="${esc(p.image_url)}" alt="${esc(p.name)}">`:'<div class="rk-discovery-placeholder">RK</div>'}<div class="rk-discovery-body"><span>${esc(cat)}</span><strong>${esc(p.name)}</strong><small>${esc(m?.shop_name||'Rebelkultur Händler')}</small><b>${money(p.price)}</b></div></a></article>`}).join('')||'<div class="merchant-shop-empty"><strong>Keine weiteren Empfehlungen.</strong><span>Entdecke weitere Produkte über die Suche.</span></div>';
       document.querySelectorAll('[data-rk-product]').forEach(a=>a.addEventListener('click',()=>{const p=getProfile();p.products[a.dataset.rkProduct]=(p.products[a.dataset.rkProduct]||0)+1;if(a.dataset.rkCategory)p.categories[a.dataset.rkCategory]=(p.categories[a.dataset.rkCategory]||0)+1;if(a.dataset.rkMerchant)p.merchants[a.dataset.rkMerchant]=(p.merchants[a.dataset.rkMerchant]||0)+1;saveProfile(p)}));
     };
     document.querySelector('#rkShuffle')?.addEventListener('click',()=>{offset=(offset+6)%rows.length;render()});
