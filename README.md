@@ -1,6 +1,6 @@
-# Rebelkultur Shops
+# Zorqemi
 
-Shop- und Händlerplattform für Rebelkultur mit Supabase-Backend, Authentifizierung, Händlerbereich, Kundenkonto und Stripe-Checkout.
+Zorqemi ist ein neutraler Marktplatz für unabhängige Händler, physische und digitale Produkte.
 
 ## Aktueller Stand
 
@@ -49,4 +49,5 @@ Frontend-Dateien liegen im Repository-Root. Backend-Logik für Zahlungen läuft 
 - `merchant-marketing.js` – Marketing-Bereich
 - `merchant-support.js` – FAQ und Support
 - `checklist-repair.js` – Händler-Checkliste
+- `marketplace-home.js` – Zorqemi Marken- und Marketplace-Startseite
 - `supabase/migrations/` – Datenbankmigrationen
