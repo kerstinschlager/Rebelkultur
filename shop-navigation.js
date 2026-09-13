@@ -1,58 +1,12 @@
-(() => {
-  const style = document.createElement('style');
-  style.textContent = `
-    .rk-simple-nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 22px;padding:8px;border:1px solid #e5e7eb;border-radius:14px;background:#fff;box-shadow:0 4px 18px rgba(15,23,42,.05)}
-    .rk-simple-nav button{border:0;background:transparent;padding:11px 15px;border-radius:10px;cursor:pointer;font-weight:700;color:#4b5563}
-    .rk-simple-nav button:hover{background:#f3f4f6;color:#111827}.rk-simple-nav button.active{background:#111827;color:#fff}
-    .rk-simple-nav .rk-more{margin-left:auto;position:relative}.rk-more-menu{display:none;position:absolute;right:0;top:46px;z-index:20;min-width:210px;padding:7px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;box-shadow:0 12px 30px rgba(15,23,42,.14)}
-    .rk-more.open .rk-more-menu{display:block}.rk-more-menu button{display:block;width:100%;text-align:left}.rk-nav-hint{font-size:12px;color:#6b7280;margin:7px 2px 0}@media(max-width:700px){.rk-simple-nav{display:grid;grid-template-columns:repeat(2,1fr)}.rk-simple-nav .rk-more{margin-left:0}.rk-more-menu{left:0;right:auto}}
-  `;
-  document.head.appendChild(style);
-
-  function go(tab){
-    // Design & Website is a custom panel, not an app.js dash-tab.
-    if(tab==='design' || tab==='customization'){
-      if(typeof window.openDesign==='function'){ window.openDesign(); }
-      else document.querySelector('.dash-tab[data-tab="design"]')?.click();
-      document.querySelectorAll('.rk-simple-nav [data-rk-tab]').forEach(b => b.classList.toggle('active', b.dataset.rkTab === 'design'));
-      return;
-    }
-    if(typeof window.setDashTab==='function') window.setDashTab(tab);
-    else document.querySelector(`.dash-tab[data-tab="${tab}"]`)?.click();
-    document.querySelectorAll('.rk-simple-nav [data-rk-tab]').forEach(b => b.classList.toggle('active', b.dataset.rkTab === tab));
-  }
-
-  function build(){
-    const old = document.getElementById('dashboardNav');
-    if (!old || document.getElementById('rkSimpleNav')) return;
-    old.style.display = 'none';
-    const nav = document.createElement('div');
-    nav.id = 'rkSimpleNav'; nav.className = 'rk-simple-nav'; nav.setAttribute('aria-label','Händler-Navigation');
-    nav.innerHTML = `
-      <button type="button" data-rk-tab="overview" class="active">Start</button>
-      <button type="button" data-rk-tab="products">Produkte</button>
-      <button type="button" data-rk-tab="orders">Bestellungen</button>
-      <button type="button" data-rk-tab="design">Shop gestalten</button>
-      <div class="rk-more"><button type="button" data-more>Mehr ▾</button><div class="rk-more-menu">
-        <button type="button" data-rk-tab="settings">Einstellungen</button>
-        <button type="button" data-rk-tab="legal">Rechtliches</button>
-        <button type="button" data-rk-tab="checklist">Start-Checkliste</button>
-        <button type="button" data-rk-tab="marketing">Marketing</button>
-        <button type="button" data-rk-tab="faq">FAQ & Support</button>
-      </div></div>`;
-    old.parentNode.insertBefore(nav, old);
-
-    nav.addEventListener('click', e => {
-      const more = e.target.closest('[data-more]');
-      if (more) { more.parentElement.classList.toggle('open'); return; }
-      const b = e.target.closest('[data-rk-tab]'); if (!b) return;
-      e.preventDefault(); go(b.dataset.rkTab); nav.querySelector('.rk-more')?.classList.remove('open');
-    });
-    document.addEventListener('click', e => { if (!e.target.closest('.rk-more')) nav.querySelector('.rk-more')?.classList.remove('open'); });
-  }
-
-  const oldSet = window.setDashTab;
-  if(typeof oldSet==='function') window.setDashTab=function(tab){ const r=oldSet.apply(this,arguments); setTimeout(()=>document.querySelectorAll('#rkSimpleNav [data-rk-tab]').forEach(b=>b.classList.toggle('active',b.dataset.rkTab===tab)),0); return r; };
-  setTimeout(build,100);
-  document.addEventListener('click',e=>{if(e.target.closest('[data-view="dashboard"]'))setTimeout(build,100);});
+(()=>{
+const s=document.createElement('style');s.textContent=`
+.rk-simple-nav{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:0 0 22px;padding:8px;border:1px solid #e5e7eb;border-radius:14px;background:#fff;box-shadow:0 4px 18px rgba(15,23,42,.05)}
+.rk-simple-nav button{border:0;background:transparent;padding:11px 15px;border-radius:10px;cursor:pointer;font-weight:700;color:#4b5563}.rk-simple-nav button:hover{background:#f3f4f6;color:#111827}.rk-simple-nav button.active{background:#111827;color:#fff}.rk-simple-nav .rk-more{margin-left:auto;position:relative}.rk-more-menu{display:none;position:absolute;right:0;top:46px;z-index:20;min-width:210px;padding:7px;border:1px solid #e5e7eb;border-radius:12px;background:#fff;box-shadow:0 12px 30px rgba(15,23,42,.14)}.rk-more.open .rk-more-menu{display:block}.rk-more-menu button{display:block;width:100%;text-align:left}
+#rkShopLayout{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:230px minmax(0,1fr);gap:22px;align-items:start}.rk-shop-sidebar{position:sticky;top:18px;background:#fff;border:1px solid #e4ddea;border-radius:18px;padding:16px;box-shadow:0 8px 28px rgba(43,23,61,.05)}.rk-sidebar-title{font-size:10px;font-weight:900;letter-spacing:.14em;color:#817789;margin:3px 8px 10px}.rk-side-item,.rk-side-category{width:100%;text-align:left;border:0;background:transparent;border-radius:10px;padding:10px 11px;font-size:13px;cursor:pointer;color:#342d3b}.rk-side-item:hover,.rk-side-category:hover{background:#f5f1f8}.rk-side-item.active{background:#17131c;color:#fff;font-weight:800}.rk-sidebar-divider{height:1px;background:#eee8f1;margin:14px 0}.rk-side-categories{display:flex;flex-direction:column;gap:2px;max-height:390px;overflow:auto}.rk-side-category{font-size:12px;padding:8px 11px}.rk-shop-main{min-width:0}.rk-shop-main>#productGrid{margin-top:16px}
+@media(max-width:850px){.rk-simple-nav{display:grid;grid-template-columns:repeat(2,1fr)}.rk-simple-nav .rk-more{margin-left:0}.rk-more-menu{left:0;right:auto}#rkShopLayout{grid-template-columns:1fr;margin:0 12px;gap:12px}.rk-shop-sidebar{position:relative;top:auto;padding:12px;display:flex;flex-wrap:wrap;gap:6px}.rk-sidebar-title{width:100%;margin:2px 5px}.rk-side-item{width:auto;flex:1 1 auto}.rk-sidebar-divider{display:none}.rk-side-categories{width:100%;display:grid;grid-template-columns:repeat(2,1fr);max-height:170px}.rk-side-category{background:#faf8fc}}
+`;document.head.appendChild(s);
+function go(t){if(t==='design'||t==='customization'){if(typeof openDesign==='function')openDesign();else document.querySelector('.dash-tab[data-tab="design"]')?.click();return}if(typeof setDashTab==='function')setDashTab(t);else document.querySelector('.dash-tab[data-tab="'+t+'"]')?.click()}
+function buildDash(){const old=document.getElementById('dashboardNav');if(!old||document.getElementById('rkSimpleNav'))return;old.style.display='none';const n=document.createElement('div');n.id='rkSimpleNav';n.className='rk-simple-nav';n.innerHTML='<button data-rk-tab="overview" class="active">Start</button><button data-rk-tab="products">Produkte</button><button data-rk-tab="orders">Bestellungen</button><button data-rk-tab="design">Shop gestalten</button><div class="rk-more"><button data-more>Mehr ▾</button><div class="rk-more-menu"><button data-rk-tab="settings">Einstellungen</button><button data-rk-tab="legal">Rechtliches</button><button data-rk-tab="checklist">Start-Checkliste</button><button data-rk-tab="marketing">Marketing</button><button data-rk-tab="faq">FAQ & Support</button></div></div>';old.parentNode.insertBefore(n,old);n.addEventListener('click',e=>{const m=e.target.closest('[data-more]');if(m){m.parentElement.classList.toggle('open');return}const b=e.target.closest('[data-rk-tab]');if(!b)return;go(b.dataset.rkTab);n.querySelector('.rk-more')?.classList.remove('open')})}
+function buildShop(){const shop=document.querySelector('#shopView'),tb=shop?.querySelector('.toolbar'),grid=document.querySelector('#productGrid');if(!shop||!tb||!grid||document.getElementById('rkShopLayout'))return;const l=document.createElement('div');l.id='rkShopLayout';l.innerHTML='<aside class="rk-shop-sidebar"><div class="rk-sidebar-title">SHOP ENTDECKEN</div><button class="rk-side-item active" data-side="all">▦ Alle Produkte</button><button class="rk-side-item" data-side="popular">🔥 Beliebt</button><button class="rk-side-item" data-side="new">✨ Neu</button><button class="rk-side-item" data-side="personal">♥ Für dich</button><button class="rk-side-item" data-side="merchants">♙ Händler</button><div class="rk-sidebar-divider"></div><div class="rk-sidebar-title">KATEGORIEN</div><div id="rkSideCategories" class="rk-side-categories"><span class="muted">Laden …</span></div></aside><div class="rk-shop-main"></div>';const main=l.querySelector('.rk-shop-main');shop.insertBefore(l,tb);main.append(tb,grid);const top=()=>grid.scrollIntoView({behavior:'smooth',block:'start'});l.querySelectorAll('[data-side]').forEach(b=>b.onclick=()=>{l.querySelectorAll('.rk-side-item').forEach(x=>x.classList.toggle('active',x===b));if(b.dataset.side==='merchants'){document.querySelector('#merchantDirectory')?.scrollIntoView({behavior:'smooth'});return}document.querySelector('.rk-tab[data-mode="'+b.dataset.side+'"]')?.click();top()});const cats=()=>{const cs=[...new Set((window.products||[]).map(p=>p.category).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'de'));const e=document.getElementById('rkSideCategories');if(!e)return;e.innerHTML=cs.slice(0,18).map(c=>'<button class="rk-side-category" data-cat="'+String(c).replace(/[&<>\"']/g,'')+'">'+String(c).replace(/[&<>\"']/g,'')+'</button>').join('')||'<span class="muted">Noch keine Kategorien</span>';e.querySelectorAll('[data-cat]').forEach(b=>b.onclick=()=>{const f=document.querySelector('#categoryFilter');if(f){f.value=b.dataset.cat;f.dispatchEvent(new Event('change',{bubbles:true}))}top()})};cats();let i=0;const wait=()=>{cats();if((window.products||[]).length||i++>15)return;setTimeout(wait,400)};wait()}
+const oldSet=window.setDashTab;if(typeof oldSet==='function')window.setDashTab=function(t){const r=oldSet.apply(this,arguments);setTimeout(()=>document.querySelectorAll('#rkSimpleNav [data-rk-tab]').forEach(b=>b.classList.toggle('active',b.dataset.rkTab===t)),0);return r};setTimeout(buildDash,100);setTimeout(buildShop,1400);document.addEventListener('click',e=>{if(e.target.closest('[data-view="dashboard"]'))setTimeout(buildDash,100)});
 })();
