@@ -14,23 +14,26 @@ async function verifySignature(payload:string,signature:string,secret:string){
 
 Deno.serve(async req=>{
   if(req.method!=='POST')return new Response('Method Not Allowed',{status:405});
+  let admin:any=null; let claimedEventId:string|null=null;
   try{
     const secret=Deno.env.get('STRIPE_WEBHOOK_SECRET'); const serviceKey=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY'); const url=Deno.env.get('SUPABASE_URL');
     if(!secret||!serviceKey||!url)return new Response('Webhook secrets not configured',{status:500});
     const payload=await req.text(); const sig=req.headers.get('Stripe-Signature')||'';
     if(!await verifySignature(payload,sig,secret))return new Response('Invalid signature',{status:400});
-    const event=JSON.parse(payload); const admin=createClient(url,serviceKey);
+    const event=JSON.parse(payload); admin=createClient(url,serviceKey);
     if(!event.id)return new Response('Missing event id',{status:400});
+    claimedEventId=event.id;
 
-    // Stripe retries webhook deliveries. Ignore an event that was already completed.
-    const { data: existingEvent, error: eventLookupError } = await admin
+    // Claim before side effects. The primary key makes concurrent Stripe deliveries
+    // mutually exclusive, so the same event cannot mutate an order twice.
+    const { error: claimError } = await admin
       .from('stripe_webhook_events')
-      .select('event_id')
-      .eq('event_id', event.id)
-      .maybeSingle();
-    if(eventLookupError)throw eventLookupError;
-    if(existingEvent?.event_id){
-      return new Response(JSON.stringify({received:true,event_id:event.id,duplicate:true}),{status:200,headers:{'Content-Type':'application/json'}});
+      .insert({event_id:event.id,event_type:event.type});
+    if(claimError){
+      if(claimError.code==='23505'){
+        return new Response(JSON.stringify({received:true,event_id:event.id,duplicate:true}),{status:200,headers:{'Content-Type':'application/json'}});
+      }
+      throw claimError;
     }
 
     if(event.type==='checkout.session.completed'){
@@ -67,16 +70,13 @@ Deno.serve(async req=>{
       }
     }
 
-    // Record only after all event handling succeeded, so a failed delivery remains retryable.
-    const { error: recordError } = await admin.from('stripe_webhook_events').insert({event_id:event.id,event_type:event.type});
-    if(recordError){
-      // A concurrent duplicate may have inserted the same event after our initial lookup.
-      if(recordError.code==='23505'){
-        return new Response(JSON.stringify({received:true,event_id:event.id,duplicate:true}),{status:200,headers:{'Content-Type':'application/json'}});
-      }
-      throw recordError;
-    }
-
     return new Response(JSON.stringify({received:true,event_id:event.id}),{status:200,headers:{'Content-Type':'application/json'}});
-  }catch(e){console.error(e);return new Response('Webhook error',{status:500})}
+  }catch(e){
+    // Remove a failed claim so Stripe can safely retry the delivery. Successful
+    // order/payment mutations are themselves guarded by idempotent state checks.
+    if(admin&&claimedEventId){
+      try{await admin.from('stripe_webhook_events').delete().eq('event_id',claimedEventId);}catch(cleanupError){console.error('Failed to release webhook claim:',cleanupError)}
+    }
+    console.error(e);return new Response('Webhook error',{status:500})
+  }
 });
