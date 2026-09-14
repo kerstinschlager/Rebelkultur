@@ -1,0 +1,44 @@
+/* Zorqemi Mobile-first polish */
+@media (max-width: 600px){
+  html,body{width:100%;max-width:100%;overflow-x:hidden}
+  .site-header{position:sticky;top:0;padding:9px 12px;gap:8px;min-height:60px}
+  .brand{width:auto!important;min-width:0;margin-right:0;gap:8px}
+  .brand-mark{width:36px;height:36px;border-radius:10px}
+  .brand strong{font-size:16px}.brand small{font-size:7px;letter-spacing:1.5px}
+  .site-header nav{order:3;width:100%;display:flex;overflow-x:auto;gap:5px;padding:2px 0 1px;scrollbar-width:none}
+  .site-header nav::-webkit-scrollbar{display:none}
+  .nav-btn{flex:0 0 auto;padding:9px 13px;font-size:13px;min-height:42px}
+  .header-actions{margin-left:auto;display:flex;gap:5px}
+  #authStatus{display:none}.cart-btn{padding:8px 10px;min-height:42px;font-size:12px}
+  .view{padding:16px 12px 55px}
+  .hero{min-height:0;grid-template-columns:1fr;padding:28px 20px;border-radius:22px;gap:18px}
+  .hero h1{font-size:42px;letter-spacing:-1.5px;margin:8px 0 14px}
+  .hero p:not(.eyebrow){font-size:15px;margin-bottom:18px}
+  .hero .primary{width:100%;text-align:center;min-height:48px;padding:13px 16px}
+  .hero-card{display:none}
+  .toolbar{grid-template-columns:1fr 1fr;gap:8px;margin:20px 0 14px}
+  .toolbar input{grid-column:1/-1}
+  .toolbar input,.toolbar select{min-height:48px;padding:11px;font-size:14px}
+  .product-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .product{border-radius:13px}.product .product-body{padding:11px}
+  .product-body h3{font-size:14px;line-height:1.25}.muted{font-size:11px}.price{font-size:15px;margin:8px 0}
+  .add{min-height:44px;padding:10px 7px;font-size:12px}
+  .page-head h2{font-size:29px}.page-head p{font-size:14px}
+  .page-head .primary{width:100%;min-height:48px}
+  .dashboard-nav{margin-bottom:14px;padding:7px;border-radius:12px}
+  .dash-tab{min-height:42px;padding:9px 11px;font-size:12px}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.stat{padding:14px}.stat strong{font-size:22px}
+  .dashboard-grid{gap:12px}.panel{padding:14px;border-radius:13px}
+  .panel-head{gap:8px;align-items:flex-start}.panel-head h3{font-size:16px}.panel-head span{font-size:10px}
+  .admin-row,.order-row{grid-template-columns:1fr;gap:7px}.admin-actions{flex-wrap:wrap}.admin-actions button{min-height:40px}
+  .settings-grid,.legal-grid,.marketing-grid{gap:10px}.settings-grid input,.settings-grid select{min-height:48px}
+  .checklist label{padding:12px;font-size:13px;align-items:flex-start}.checklist input{width:20px;height:20px;flex:0 0 auto}
+  .modal{padding:0;align-items:end}.modal-card{width:100%;max-width:none;max-height:94vh;border-radius:20px 20px 0 0;padding:22px 16px calc(24px + env(safe-area-inset-bottom));}
+  .close{right:12px;top:8px;width:44px;height:44px;font-size:28px}.modal input,.modal textarea{min-height:48px}.modal textarea{min-height:100px}.modal button.primary,.modal .full{min-height:50px}
+  .two{grid-template-columns:1fr}
+  .toast{bottom:calc(16px + env(safe-area-inset-bottom));max-width:calc(100% - 24px);text-align:center}
+}
+@media (max-width:380px){
+  .brand strong{font-size:15px}.cart-btn{font-size:0}.cart-btn span{font-size:12px;margin-left:0}
+  .hero h1{font-size:36px}.product-body h3{font-size:13px}.add{font-size:11px}
+}
