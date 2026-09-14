@@ -55,4 +55,10 @@
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',addVisuals); else addVisuals();
   setTimeout(addVisuals,800);
+
+  // Load the large merchant-shop theme preview without changing the main HTML shell.
+  const p=document.createElement('script');
+  p.src='zq-theme-full-preview.js?v=20260914-1';
+  p.defer=true;
+  document.head.appendChild(p);
 })();
