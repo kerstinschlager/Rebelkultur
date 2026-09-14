@@ -26,7 +26,7 @@
   async function loadState(){
     const {data:{user}} = await db.auth.getUser();
     if(!user) return null;
-    const {data:m} = await db.from('merchants').select('id,shop_name,slug,published,stripe_account_id,stripe_onboarding_complete,description,contact_email').eq('owner_id',user.id).limit(1).maybeSingle();
+    const {data:m} = await db.from('merchants').select('id,shop_name,slug,published,stripe_account_id,stripe_onboarding_complete,description,contact_email,theme').eq('owner_id',user.id).limit(1).maybeSingle();
     if(!m) return null;
     merchant=m;
     const [p,s,l,seo] = await Promise.all([
@@ -40,8 +40,8 @@
     state.design = !!(s.data?.merchant_id) || !!m.theme;
     state.payments = !!m.stripe_account_id && !!m.stripe_onboarding_complete;
     state.legal = !!(l.data?.impressum && l.data?.datenschutz);
-    state.seo = !!seo.data?.seo_title;
     state.shipping = false;
+    state.seo = !!seo.data?.seo_title;
     state.published = !!m.published;
     return m;
   }
@@ -56,7 +56,6 @@
     const host=document.getElementById('dashboardOverview'); if(!host || !merchant) return;
     let box=document.getElementById('rkShopBuilder');
     if(!box){ box=document.createElement('section'); box.id='rkShopBuilder'; box.className='rk-builder'; host.prepend(box); }
-
     const steps=[
       ['profile','Shop-Profil einrichten','Shopname, Kontakt und Beschreibung hinterlegen.','settings','Profil öffnen'],
       ['design','Design auswählen','Wähle ein professionelles Layout und passe deinen Shop an.','design','Design wählen'],
@@ -71,24 +70,16 @@
     const done=required.filter(s=>state[s[0]]).length;
     const pct=Math.round(done/required.length*100);
     const next=steps.find(s=>!state[s[0]]) || null;
-
-    box.innerHTML=`
-      <div class="rk-builder-head"><div><h3>Dein Shop ist fast startklar</h3><p>Wir führen dich Schritt für Schritt durch die Einrichtung.</p></div><div class="rk-builder-percent">${pct}%</div></div>
-      <div class="rk-builder-progress"><span style="width:${pct}%"></span></div>
-      <div class="rk-builder-body">
-        ${steps.map((s,i)=>`<div class="rk-builder-step ${state[s[0]]?'done':''}"><div class="rk-builder-icon">${state[s[0]]?'✓':i+1}</div><div class="rk-builder-copy"><strong>${esc(s[1])}</strong><small>${esc(s[2])}</small></div>${state[s[0]]?'<span aria-label="Erledigt">✓</span>':`<button class="rk-builder-action" data-builder-tab="${esc(s[3])}">${esc(s[4])}</button>`}</div>`).join('')}
-        ${next ? `<div class="rk-builder-next"><strong>Als Nächstes: ${esc(next[1])}</strong><span>${esc(next[2])}</span><br><button class="primary" data-next-tab="${esc(next[3])}">${esc(next[4])}</button></div>` : `<div class="rk-builder-next"><strong>🎉 Dein Shop ist bereit.</strong><span>Alle wichtigen Einrichtungsschritte sind erledigt.</span></div>`}
-        <div class="rk-builder-open"><button class="secondary" id="rkOpenDesign">Shop gestalten &amp; Vorschau öffnen</button></div>
-      </div>`;
-
+    box.innerHTML=`<div class="rk-builder-head"><div><h3>Dein Shop ist fast startklar</h3><p>Wir führen dich Schritt für Schritt durch die Einrichtung.</p></div><div class="rk-builder-percent">${pct}%</div></div><div class="rk-builder-progress"><span style="width:${pct}%"></span></div><div class="rk-builder-body">${steps.map((s,i)=>`<div class="rk-builder-step ${state[s[0]]?'done':''}"><div class="rk-builder-icon">${state[s[0]]?'✓':i+1}</div><div class="rk-builder-copy"><strong>${esc(s[1])}</strong><small>${esc(s[2])}</small></div>${state[s[0]]?'<span aria-label="Erledigt">✓</span>':`<button class="rk-builder-action" data-builder-tab="${esc(s[3])}">${esc(s[4])}</button>`}</div>`).join('')}${next?`<div class="rk-builder-next"><strong>Als Nächstes: ${esc(next[1])}</strong><span>${esc(next[2])}</span><br><button class="primary" data-next-tab="${esc(next[3])}">${esc(next[4])}</button></div>`:`<div class="rk-builder-next"><strong>🎉 Dein Shop ist bereit.</strong><span>Alle wichtigen Einrichtungsschritte sind erledigt.</span></div>`}<div class="rk-builder-open"><button class="secondary" id="rkOpenDesign">Shop gestalten &amp; Vorschau öffnen</button></div></div>`;
     box.querySelectorAll('[data-builder-tab],[data-next-tab]').forEach(b=>b.addEventListener('click',()=>go(b.dataset.builderTab || b.dataset.nextTab)));
     box.querySelector('#rkOpenDesign')?.addEventListener('click',()=>go('design'));
   }
-
   async function refresh(){ await loadState(); render(); }
   const original = window.renderDashboard;
   window.renderDashboard = async function(...args){ const result=original ? await original.apply(this,args) : undefined; setTimeout(refresh,50); return result; };
   document.addEventListener('click',e=>{ const tab=e.target.closest('.dash-tab'); if(tab && tab.dataset.tab==='overview') setTimeout(refresh,80); });
   window.addEventListener('hashchange',()=>setTimeout(refresh,100));
   setTimeout(refresh,400);
+  // Load the theme action bridge once so selecting a design also saves it and opens the website editor.
+  setTimeout(()=>{if(!document.querySelector('script[data-zq-theme-apply]')){const s=document.createElement('script');s.src='zq-theme-apply.js?v=20260914-2';s.dataset.zqThemeApply='1';document.body.appendChild(s);}},800);
 })();
