@@ -1,0 +1,14 @@
+{
+  "name": "Zorqemi Marketplace",
+  "short_name": "Zorqemi",
+  "description": "Zorqemi – unabhängiger Online-Marktplatz für physische und digitale Produkte.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#17131d",
+  "theme_color": "#17131d",
+  "icons": [
+    { "src": "zq-icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
