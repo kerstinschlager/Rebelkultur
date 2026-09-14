@@ -13,7 +13,7 @@ create or replace function public.create_order_from_cart(
 returns bigint
 language plpgsql
 security definer
-set search_path = public, pg_temp
+set search_path = ''
 as $$
 declare
   v_order_id bigint;
