@@ -16,14 +16,25 @@ services:
     networks: [zorqemi]
 
   zorqemi-api:
-    build: ./server/api
+    build:
+      context: .
+      dockerfile: server/api/Dockerfile
     restart: unless-stopped
     environment:
       PORT: 3000
       DATABASE_URL: postgresql://${POSTGRES_USER:-zorqemi}:${POSTGRES_PASSWORD}@zorqemi-db:5432/${POSTGRES_DB:-zorqemi}
+      DB_POOL_MAX: 10
     depends_on:
       zorqemi-db:
         condition: service_healthy
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     networks: [zorqemi]
 
   zorqemi-web:
