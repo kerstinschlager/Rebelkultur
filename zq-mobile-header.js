@@ -60,4 +60,36 @@
     syncCart();
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
+
+  // Final navigation repair: merchant-integrations.js creates the real panel and buttons.
+  // This runs last and makes the integrations tab directly visible and clickable.
+  function repairIntegrations(){
+    const nav=document.getElementById('dashboardNav');
+    if(!nav)return false;
+    let tab=nav.querySelector('[data-tab="integrations"]');
+    if(!tab){
+      tab=document.createElement('button');
+      tab.type='button'; tab.className='dash-tab'; tab.dataset.tab='integrations'; tab.textContent='Integrationen';
+      nav.insertBefore(tab,nav.firstChild);
+    } else if(tab.parentElement!==nav){ nav.insertBefore(tab,nav.firstChild); }
+    tab.style.display='inline-flex'; tab.style.visibility='visible'; tab.style.opacity='1';
+    let panel=document.getElementById('dashboardIntegrations');
+    if(!panel){ panel=document.createElement('div'); panel.id='dashboardIntegrations'; panel.className='dash-panel hidden'; nav.after(panel); }
+    if(!tab.dataset.zqRepairBound){
+      const old=tab.onclick;
+      tab.onclick=()=>{
+        document.querySelectorAll('.dash-panel').forEach(p=>p.classList.add('hidden'));
+        panel.classList.remove('hidden');
+        document.querySelectorAll('.dash-tab').forEach(b=>b.classList.remove('active'));
+        tab.classList.add('active');
+        if(old)old.call(tab);
+        setTimeout(()=>{panel.classList.remove('hidden')},0);
+      };
+      tab.dataset.zqRepairBound='1';
+    }
+    return true;
+  }
+  const runRepair=()=>{if(!repairIntegrations())setTimeout(runRepair,250)};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',runRepair);else runRepair();
+  setInterval(repairIntegrations,1000);
 })();
