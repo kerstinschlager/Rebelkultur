@@ -51,26 +51,24 @@ app.use((error, _req, res, _next) => {
   res.status(500).json({ ok: false, error: 'internal_server_error' });
 });
 
-const server = app.listen(port, '0.0.0.0', () => {
-  console.log(`Zorqemi API listening on ${port}`);
-});
-
 try {
   await migrate(pool);
+  const server = app.listen(port, '0.0.0.0', () => {
+    console.log(`Zorqemi API listening on ${port}`);
+  });
+
+  const shutdown = async (signal) => {
+    console.log(`Received ${signal}, shutting down`);
+    server.close(async () => {
+      await pool.end();
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 } catch (error) {
   console.error('Database migration failed:', error);
-  server.close();
   await pool.end();
   process.exit(1);
 }
-
-const shutdown = async (signal) => {
-  console.log(`Received ${signal}, shutting down`);
-  server.close(async () => {
-    await pool.end();
-    process.exit(0);
-  });
-};
-
-process.on('SIGTERM', () => shutdown('SIGTERM'));
-process.on('SIGINT', () => shutdown('SIGINT'));
