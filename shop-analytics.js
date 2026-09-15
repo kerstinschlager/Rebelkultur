@@ -4,122 +4,21 @@
   const esc=v=>String(v??'').replace(/[&<>\"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[c]));
   const TRACK='https://oansbivjkczjbtxaknks.supabase.co/functions/v1/track-visitor';
   const CENTROIDS='https://raw.githubusercontent.com/komsitr/country-centroid/master/country-centroids.json';
-  let loadedFor=null,globe=null,centroids=null,refreshTimer=null,trackingStarted=false;
-
+  let globe=null,centroids=null,refreshTimer=null,trackingStarted=false;
   const css=document.createElement('style');css.textContent=`
-    .shop-stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin:14px 0}.shop-stat-card{padding:18px;border:1px solid #e0d8e8;border-radius:15px;background:#fff}.shop-stat-card strong{display:block;font-size:27px}.shop-stat-card span{font-size:12px;color:#777}
-    .visitor-live-card{margin-top:18px;border:1px solid #e0d8e8;border-radius:18px;background:#fff;overflow:hidden}.visitor-live-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;border-bottom:1px solid #ece7f0}.visitor-live-head h3{margin:0}.visitor-live-badge{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700}.visitor-live-dot{width:9px;height:9px;border-radius:50%;background:#c8ff24;box-shadow:0 0 0 5px rgba(200,255,36,.15)}.visitor-live-body{display:grid;grid-template-columns:minmax(280px,1.35fr) minmax(240px,.65fr);min-height:390px}.visitor-globe{min-height:390px;background:#0e0b14;position:relative}.visitor-globe canvas{display:block}.visitor-countries{padding:18px;overflow:auto;max-height:390px}.visitor-country{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #eee8f1}.visitor-country:last-child{border-bottom:0}.visitor-country strong{display:block}.visitor-country span{font-size:12px;color:#777}.visitor-country-count{font-weight:800;font-size:16px}.visitor-empty{padding:28px 10px;color:#777;text-align:center}.visitor-note{padding:12px 18px;border-top:1px solid #eee8f1;color:#777;font-size:12px}.visitor-error{padding:20px;color:#777}.visitor-loader{position:absolute;inset:0;display:grid;place-items:center;color:#ddd;font-size:13px;pointer-events:none}
-    @media(max-width:800px){.shop-stat-grid{grid-template-columns:repeat(2,1fr)}.visitor-live-body{grid-template-columns:1fr}.visitor-countries{max-height:none}.visitor-globe{min-height:330px}.visitor-live-head{align-items:flex-start;flex-direction:column}}
-    @media(max-width:520px){.shop-stat-grid{grid-template-columns:1fr}.visitor-globe{min-height:290px}}
+    .zq-analytics{margin-top:18px}.zq-kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.zq-kpi{padding:18px;border:1px solid #e0d8e8;border-radius:15px;background:#fff}.zq-kpi strong{display:block;font-size:26px}.zq-kpi span{font-size:12px;color:#777}.zq-analytics-grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(300px,.8fr);gap:16px;margin-top:16px}.zq-chart-card,.zq-funnel-card,.zq-product-card{padding:18px;border:1px solid #e0d8e8;border-radius:18px;background:#fff}.zq-chart{height:230px;display:flex;align-items:end;gap:5px;padding:18px 4px 4px}.zq-bar-wrap{height:100%;flex:1;display:flex;align-items:end;gap:2px;min-width:3px}.zq-bar{flex:1;border-radius:5px 5px 0 0;background:#222;min-height:2px}.zq-bar.orders{background:#c8ff24}.zq-bar-label{font-size:9px;color:#888;writing-mode:vertical-rl;transform:rotate(180deg)}.zq-funnel-row{margin:13px 0}.zq-funnel-top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}.zq-funnel-track{height:10px;background:#eee;border-radius:20px;overflow:hidden}.zq-funnel-fill{height:100%;background:#222;border-radius:20px}.zq-funnel-fill.last{background:#c8ff24}.zq-product-table{width:100%;border-collapse:collapse;font-size:13px}.zq-product-table th,.zq-product-table td{padding:10px 7px;border-bottom:1px solid #eee;text-align:left}.zq-product-table th{font-size:11px;color:#777;text-transform:uppercase}.zq-product-table td.num{text-align:right}.zq-conv{font-weight:800}.zq-live{margin-top:16px}.visitor-live-card{border:1px solid #e0d8e8;border-radius:18px;background:#fff;overflow:hidden}.visitor-live-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:18px 20px;border-bottom:1px solid #ece7f0}.visitor-live-head h3{margin:0}.visitor-live-badge{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700}.visitor-live-dot{width:9px;height:9px;border-radius:50%;background:#c8ff24;box-shadow:0 0 0 5px rgba(200,255,36,.15)}.visitor-live-body{display:grid;grid-template-columns:minmax(280px,1.35fr) minmax(240px,.65fr);min-height:390px}.visitor-globe{min-height:390px;background:#0e0b14;position:relative}.visitor-globe canvas{display:block}.visitor-countries{padding:18px;overflow:auto;max-height:390px}.visitor-country{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #eee8f1}.visitor-country:last-child{border-bottom:0}.visitor-country strong{display:block}.visitor-country span{font-size:12px;color:#777}.visitor-country-count{font-weight:800;font-size:16px}.visitor-empty{padding:28px 10px;color:#777;text-align:center}.visitor-note{padding:12px 18px;border-top:1px solid #eee8f1;color:#777;font-size:12px}.visitor-error{padding:20px;color:#777}.visitor-loader{position:absolute;inset:0;display:grid;place-items:center;color:#ddd;font-size:13px}
+    @media(max-width:950px){.zq-kpi-grid{grid-template-columns:repeat(2,1fr)}.zq-analytics-grid{grid-template-columns:1fr}}@media(max-width:800px){.visitor-live-body{grid-template-columns:1fr}.visitor-countries{max-height:none}.visitor-globe{min-height:330px}.visitor-live-head{align-items:flex-start;flex-direction:column}}@media(max-width:520px){.zq-kpi-grid{grid-template-columns:1fr}.visitor-globe{min-height:290px}.zq-chart{height:190px}}
   `;document.head.appendChild(css);
-
   async function getMerchant(){const {data:{user}}=await db.auth.getUser();if(!user)return null;const {data}=await db.from('merchants').select('id,slug').eq('owner_id',user.id).maybeSingle();return data||null}
-
-  function visitorId(){
-    const key='zq_anonymous_visitor_id';
-    try{
-      let id=localStorage.getItem(key);
-      if(!id){id=crypto.randomUUID();localStorage.setItem(key,id)}
-      return id;
-    }catch(_){return crypto.randomUUID()}
-  }
-
-  async function trackShopVisitor(){
-    if(trackingStarted)return;trackingStarted=true;
-    const slug=new URLSearchParams(location.search).get('shop');
-    if(!slug)return;
-    const id=visitorId();
-    const send=async()=>{try{await fetch(TRACK,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug,visitor_key:id,resolve:true}),keepalive:true})}catch(_){}};
-    await send();
-    setInterval(send,30000);
-  }
-
-  async function loadCentroids(){
-    if(centroids)return centroids;
-    try{
-      const r=await fetch(CENTROIDS,{cache:'force-cache'});if(!r.ok)throw new Error('centroids');
-      const rows=await r.json();centroids=Object.fromEntries((rows||[]).map(x=>[String(x.alpha2||'').toUpperCase(),x]));
-    }catch(_){centroids={}}
-    return centroids;
-  }
-
-  function loadGlobeScript(){
-    return new Promise((resolve,reject)=>{
-      if(window.Globe)return resolve();
-      const existing=document.querySelector('script[data-zq-globe]');
-      if(existing){existing.addEventListener('load',resolve,{once:true});existing.addEventListener('error',reject,{once:true});return}
-      const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/globe.gl@2.46.2/dist/globe.gl.min.js';s.dataset.zqGlobe='1';s.onload=resolve;s.onerror=reject;document.head.appendChild(s);
-    });
-  }
-
-  async function buildGlobe(container,rows){
-    try{
-      await Promise.all([loadGlobeScript(),loadCentroids()]);
-      if(!window.Globe)throw new Error('globe');
-      const points=rows.map(r=>{const c=centroids[String(r.country_code||'').toUpperCase()];return c?{lat:Number(c.latitude),lng:Number(c.longitude),count:r.count,name:r.country_name||c.name,code:r.country_code}:null}).filter(Boolean);
-      if(!globe){
-        container.innerHTML='';
-        globe=new window.Globe(container)
-          .globeImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg')
-          .bumpImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png')
-          .backgroundColor('#0e0b14')
-          .showAtmosphere(true)
-          .atmosphereColor('#c8ff24')
-          .atmosphereAltitude(0.12)
-          .pointLat('lat').pointLng('lng').pointLabel(d=>`${esc(d.name)}: ${d.count} aktive Besucher`)
-          .pointColor(()=>'#c8ff24').pointAltitude(d=>Math.min(.18,.025+d.count*.018)).pointRadius(d=>Math.min(.8,.22+d.count*.05));
-        globe.controls().autoRotate=true;globe.controls().autoRotateSpeed=.35;globe.controls().enableZoom=true;
-      }
-      globe.pointsData(points);
-      container.querySelector('.visitor-loader')?.remove();
-    }catch(_){
-      container.innerHTML='<div class="visitor-error">Die Weltkugel konnte gerade nicht geladen werden. Die Länderübersicht bleibt verfügbar.</div>';
-    }
-  }
-
-  async function loadVisitorAnalytics(merchant){
-    const panel=document.querySelector('#dashboardOverview');if(!panel||panel.classList.contains('hidden'))return;
-    let box=document.querySelector('#shopVisitorAnalytics');
-    if(!box){
-      box=document.createElement('article');box.className='panel';box.id='shopVisitorAnalytics';
-      box.innerHTML='<div class="panel-head"><h3>Live-Besucher</h3><span>Herkunft in Echtzeit</span></div><div class="visitor-live-card"><div class="visitor-live-head"><div><h3>Woher kommen die Besucher?</h3><div class="muted">Aktive Besucher der veröffentlichten Händlerseite</div></div><div class="visitor-live-badge"><i class="visitor-live-dot"></i><span>LIVE · Aktualisierung alle 30 Sekunden</span></div></div><div class="visitor-live-body"><div id="visitorGlobe" class="visitor-globe"><div class="visitor-loader">Weltkugel wird geladen …</div></div><div id="visitorCountries" class="visitor-countries"><div class="visitor-empty">Besucherdaten werden geladen …</div></div></div><div class="visitor-note">Es werden nur Länderangaben für die Statistik verwendet. IP-Adressen werden nicht in Zorqemi gespeichert.</div></div>';
-      panel.appendChild(box);
-    }
-    const countriesEl=box.querySelector('#visitorCountries'),globeEl=box.querySelector('#visitorGlobe');
-    const since=new Date(Date.now()-24*60*60*1000).toISOString();
-    const {data,error}=await db.from('visitor_sessions').select('country_code,country_name,last_seen_at').eq('merchant_id',merchant.id).gte('last_seen_at',since);
-    if(error){countriesEl.innerHTML='<div class="visitor-error">Besucherdaten konnten nicht geladen werden.</div>';return}
-    const grouped={};
-    (data||[]).forEach(v=>{const code=String(v.country_code||'XX').toUpperCase();const active=new Date(v.last_seen_at).getTime()>Date.now()-5*60*1000;(grouped[code]??={country_code:code,country_name:v.country_name||'Unbekannt',count:0,active:0}).count++;if(active)grouped[code].active++});
-    const rows=Object.values(grouped).sort((a,b)=>b.count-a.count);
-    const activeTotal=rows.reduce((s,r)=>s+r.active,0);
-    const allTotal=rows.reduce((s,r)=>s+r.count,0);
-    countriesEl.innerHTML=rows.length?`<div class="visitor-country" style="padding-top:0"><div><strong>Jetzt online</strong><span>letzte 5 Minuten</span></div><div class="visitor-country-count">${activeTotal.toLocaleString('de-DE')}</div></div>`+rows.slice(0,12).map(r=>`<div class="visitor-country"><div><strong>${esc(r.country_name)}</strong><span>${esc(r.country_code)} · 24 Stunden</span></div><div class="visitor-country-count">${r.count.toLocaleString('de-DE')}</div></div>`).join(''):`<div class="visitor-empty"><strong>Noch keine Besucher erfasst.</strong><br>Die Statistik füllt sich, sobald dein veröffentlichter Händler-Shop besucht wird.</div>`;
-    if(globeEl)await buildGlobe(globeEl,rows.filter(r=>r.country_code!=='XX'));
-    const title=box.querySelector('.visitor-live-head h3');if(title)title.textContent=`Woher kommen die Besucher? · ${activeTotal.toLocaleString('de-DE')} jetzt online`;
-    box.dataset.total=String(allTotal);loadedFor=merchant.id;
-  }
-
-  async function load(){
-    const merchant=await getMerchant();
-    if(!merchant)return;
-    const panel=document.querySelector('#dashboardOverview');if(!panel)return;
-    let box=document.querySelector('#shopAnalyticsStandalone');
-    if(!box){
-      box=document.createElement('article');box.className='panel';box.id='shopAnalyticsStandalone';
-      box.innerHTML='<h3>Shop-Statistik</h3><div id="shopStatGrid" class="shop-stat-grid"><div class="muted">Wird geladen …</div></div><p class="muted">Bezahlte und bearbeitete Bestellungen; neue und stornierte Bestellungen werden nicht gezählt.</p>';
-      panel.appendChild(box);
-    }
-    const grid=box.querySelector('#shopStatGrid');
-    const {data:products}=await db.from('products').select('id,stock').eq('merchant_id',merchant.id);const mine=products||[];const ids=mine.map(p=>p.id);let orders=[];
-    if(ids.length){const {data:items}=await db.from('order_items').select('order_id,product_id,quantity,unit_price,orders(id,status)').in('product_id',ids);const grouped={};(items||[]).forEach(i=>{const o=i.orders;if(!o||['new','cancelled'].includes(o.status))return;(grouped[o.id]??={...o,items:[]}).items.push(i)});orders=Object.values(grouped)}
-    const revenue=orders.reduce((s,o)=>s+o.items.reduce((x,i)=>x+Number(i.unit_price||0)*Number(i.quantity||0),0),0);const sold=orders.reduce((s,o)=>s+o.items.reduce((x,i)=>x+Number(i.quantity||0),0),0);const open=orders.filter(o=>['paid','processing'].includes(o.status)).length;const stock=mine.reduce((s,p)=>s+Number(p.stock||0),0);const avg=orders.length?revenue/orders.length:0;
-    grid.innerHTML=`<div class="shop-stat-card"><strong>${orders.length.toLocaleString('de-DE')}</strong><span>Bestellungen</span></div><div class="shop-stat-card"><strong>${money(revenue)}</strong><span>Umsatz</span></div><div class="shop-stat-card"><strong>${sold.toLocaleString('de-DE')}</strong><span>Artikel verkauft</span></div><div class="shop-stat-card"><strong>${money(avg)}</strong><span>Ø Bestellwert</span></div><div class="shop-stat-card"><strong>${open.toLocaleString('de-DE')}</strong><span>Offene Bestellungen</span></div><div class="shop-stat-card"><strong>${stock.toLocaleString('de-DE')}</strong><span>Artikel auf Lager</span></div>`;
-    await loadVisitorAnalytics(merchant);
-  }
-
-  trackShopVisitor();
-  const observer=new MutationObserver(()=>load());observer.observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
-  clearInterval(refreshTimer);refreshTimer=setInterval(()=>{load();},30000);
-  load();
+  function visitorId(){const key='zq_anonymous_visitor_id';try{let id=localStorage.getItem(key);if(!id){id=crypto.randomUUID();localStorage.setItem(key,id)}return id}catch(_){return crypto.randomUUID()}}
+  async function trackShopVisitor(){if(trackingStarted)return;trackingStarted=true;const slug=new URLSearchParams(location.search).get('shop');if(!slug)return;const id=visitorId();const send=async()=>{try{await fetch(TRACK,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({slug,visitor_key:id,resolve:true}),keepalive:true})}catch(_){}};await send();setInterval(send,30000)}
+  async function loadCentroids(){if(centroids)return centroids;try{const r=await fetch(CENTROIDS,{cache:'force-cache'});if(!r.ok)throw new Error();const rows=await r.json();centroids=Object.fromEntries((rows||[]).map(x=>[String(x.alpha2||'').toUpperCase(),x]))}catch(_){centroids={}}return centroids}
+  function loadGlobeScript(){return new Promise((resolve,reject)=>{if(window.Globe)return resolve();const e=document.querySelector('script[data-zq-globe]');if(e){e.addEventListener('load',resolve,{once:true});e.addEventListener('error',reject,{once:true});return}const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/globe.gl@2.46.2/dist/globe.gl.min.js';s.dataset.zqGlobe='1';s.onload=resolve;s.onerror=reject;document.head.appendChild(s)})}
+  async function buildGlobe(container,rows){try{await Promise.all([loadGlobeScript(),loadCentroids()]);const points=rows.map(r=>{const c=centroids[String(r.country_code||'').toUpperCase()];return c?{lat:+c.latitude,lng:+c.longitude,count:r.count,name:r.country_name||c.name}:null}).filter(Boolean);if(!globe){container.innerHTML='';globe=new window.Globe(container).globeImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg').bumpImageUrl('https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-topology.png').backgroundColor('#0e0b14').showAtmosphere(true).atmosphereColor('#c8ff24').atmosphereAltitude(.12).pointLat('lat').pointLng('lng').pointLabel(d=>`${esc(d.name)}: ${d.count} Besucher`).pointColor(()=>'#c8ff24').pointAltitude(d=>Math.min(.18,.025+d.count*.018)).pointRadius(d=>Math.min(.8,.22+d.count*.05));globe.controls().autoRotate=true;globe.controls().autoRotateSpeed=.35;globe.controls().enableZoom=true}globe.pointsData(points);container.querySelector('.visitor-loader')?.remove()}catch(_){container.innerHTML='<div class="visitor-error">Weltkugel konnte gerade nicht geladen werden. Länderübersicht bleibt verfügbar.</div>'}}
+  async function loadVisitorAnalytics(merchant){const panel=document.querySelector('#dashboardOverview');if(!panel||panel.classList.contains('hidden'))return;let box=document.querySelector('#shopVisitorAnalytics');if(!box){box=document.createElement('article');box.className='panel zq-live';box.id='shopVisitorAnalytics';box.innerHTML='<div class="panel-head"><h3>Live-Besucher</h3><span>Herkunft in Echtzeit</span></div><div class="visitor-live-card"><div class="visitor-live-head"><div><h3>Woher kommen die Besucher?</h3><div class="muted">Aktive Besucher der veröffentlichten Händlerseite</div></div><div class="visitor-live-badge"><i class="visitor-live-dot"></i><span>LIVE · Aktualisierung alle 30 Sekunden</span></div></div><div class="visitor-live-body"><div id="visitorGlobe" class="visitor-globe"><div class="visitor-loader">Weltkugel wird geladen …</div></div><div id="visitorCountries" class="visitor-countries"><div class="visitor-empty">Besucherdaten werden geladen …</div></div></div><div class="visitor-note">Es werden nur Länderangaben für die Statistik verwendet. IP-Adressen werden nicht in Zorqemi gespeichert.</div></div>';panel.appendChild(box)}const countriesEl=box.querySelector('#visitorCountries'),globeEl=box.querySelector('#visitorGlobe'),since=new Date(Date.now()-86400000).toISOString();const {data,error}=await db.from('visitor_sessions').select('country_code,country_name,last_seen_at').eq('merchant_id',merchant.id).gte('last_seen_at',since);if(error){countriesEl.innerHTML='<div class="visitor-error">Besucherdaten konnten nicht geladen werden.</div>';return}const grouped={};(data||[]).forEach(v=>{const code=String(v.country_code||'XX').toUpperCase(),active=new Date(v.last_seen_at).getTime()>Date.now()-300000;(grouped[code]??={country_code:code,country_name:v.country_name||'Unbekannt',count:0,active:0}).count++;if(active)grouped[code].active++});const rows=Object.values(grouped).sort((a,b)=>b.count-a.count),activeTotal=rows.reduce((s,r)=>s+r.active,0);countriesEl.innerHTML=rows.length?`<div class="visitor-country" style="padding-top:0"><div><strong>Jetzt online</strong><span>letzte 5 Minuten</span></div><div class="visitor-country-count">${activeTotal.toLocaleString('de-DE')}</div></div>`+rows.slice(0,12).map(r=>`<div class="visitor-country"><div><strong>${esc(r.country_name)}</strong><span>${esc(r.country_code)} · 24 Stunden</span></div><div class="visitor-country-count">${r.count.toLocaleString('de-DE')}</div></div>`).join(''):`<div class="visitor-empty"><strong>Noch keine Besucher erfasst.</strong><br>Die Statistik füllt sich, sobald dein veröffentlichter Händler-Shop besucht wird.</div>`;if(globeEl)await buildGlobe(globeEl,rows.filter(r=>r.country_code!=='XX'));const title=box.querySelector('.visitor-live-head h3');if(title)title.textContent=`Woher kommen die Besucher? · ${activeTotal.toLocaleString('de-DE')} jetzt online`}
+  function dateKey(d){return new Date(d).toISOString().slice(0,10)}
+  function dateLabel(k){return new Date(k+'T12:00:00').toLocaleDateString('de-DE',{day:'2-digit',month:'2-digit'})}
+  async function loadSalesAnalytics(merchant,orders,mine){const panel=document.querySelector('#dashboardOverview');if(!panel)return;let box=document.querySelector('#zqSalesAnalytics');if(!box){box=document.createElement('article');box.className='panel zq-analytics';box.id='zqSalesAnalytics';box.innerHTML='<div class="panel-head"><h3>Verkäufe & Checkout</h3><span>Händler-Analyse</span></div><div class="zq-kpi-grid" id="zqKpis"></div><div class="zq-analytics-grid"><div class="zq-chart-card"><h3>Umsatz & Bestellungen · 30 Tage</h3><div id="zqSalesChart" class="zq-chart"></div></div><div class="zq-funnel-card"><h3>Checkout-Trichter</h3><div id="zqFunnel"></div></div></div><div class="zq-product-card" style="margin-top:16px"><h3>Produkt-Analyse</h3><div id="zqProducts"></div></div>';panel.appendChild(box)}const since=Date.now()-30*86400000,days=[];for(let i=29;i>=0;i--){const d=new Date(Date.now()-i*86400000);days.push(dateKey(d))}const daily=Object.fromEntries(days.map(k=>[k,{revenue:0,orders:0}]));orders.forEach(o=>{const k=dateKey(o.created_at||o.id);if(daily[k]){daily[k].orders++;daily[k].revenue+=o.items.reduce((s,i)=>s+Number(i.unit_price||0)*Number(i.quantity||0),0)}});const max=Math.max(1,...days.map(k=>daily[k].revenue));document.querySelector('#zqSalesChart').innerHTML=days.map(k=>`<div class="zq-bar-wrap" title="${dateLabel(k)}: ${money(daily[k].revenue)} · ${daily[k].orders} Bestellungen"><div class="zq-bar" style="height:${Math.max(2,daily[k].revenue/max*100)}%"></div></div>`).join('');const paid=orders.filter(o=>['paid','processing','shipped','completed'].includes(o.status)).length;const rev=orders.reduce((s,o)=>s+o.items.reduce((x,i)=>x+Number(i.unit_price||0)*Number(i.quantity||0),0),0);const sold=orders.reduce((s,o)=>s+o.items.reduce((x,i)=>x+Number(i.quantity||0),0),0);document.querySelector('#zqKpis').innerHTML=`<div class="zq-kpi"><strong>${money(rev)}</strong><span>Umsatz · 30 Tage</span></div><div class="zq-kpi"><strong>${orders.length}</strong><span>Bestellungen · 30 Tage</span></div><div class="zq-kpi"><strong>${sold}</strong><span>Artikel verkauft</span></div><div class="zq-kpi"><strong>${orders.length?money(rev/orders.length):money(0)}</strong><span>Ø Bestellwert</span></div>`;const funnel=[['Checkout gestartet','—'],['Zahlungsdaten','—'],['Stripe geöffnet','—'],['Kauf abgeschlossen',paid]];document.querySelector('#zqFunnel').innerHTML=funnel.map((f,i)=>`<div class="zq-funnel-row"><div class="zq-funnel-top"><span>${f[0]}</span><strong>${f[1]}</strong></div><div class="zq-funnel-track"><div class="zq-funnel-fill ${i===3?'last':''}" style="width:${i===3&&paid?100:0}%"></div></div></div>`).join('');const productMap={};orders.forEach(o=>o.items.forEach(i=>{const id=i.product_id;const p=mine.find(x=>String(x.id)===String(id));const name=p?.name||p?.title||`Produkt ${id}`;(productMap[id]??={name,views:'—',cart:'—',checkout:'—',sold:0,revenue:0}).sold+=Number(i.quantity||0);productMap[id].revenue+=Number(i.quantity||0)*Number(i.unit_price||0)}));const pr=Object.values(productMap).sort((a,b)=>b.revenue-a.revenue);document.querySelector('#zqProducts').innerHTML=pr.length?`<table class="zq-product-table"><thead><tr><th>Produkt</th><th>Verkauft</th><th>Umsatz</th><th>Conversion</th></tr></thead><tbody>${pr.slice(0,30).map(p=>`<tr><td>${esc(p.name)}</td><td class="num">${p.sold}</td><td class="num">${money(p.revenue)}</td><td class="num zq-conv">—</td></tr>`).join('')}</tbody></table>`:'<div class="visitor-empty">Noch keine Verkäufe für die Produktanalyse vorhanden.</div>'}
+  async function load(){const merchant=await getMerchant();if(!merchant)return;const panel=document.querySelector('#dashboardOverview');if(!panel)return;let box=document.querySelector('#shopAnalyticsStandalone');if(!box){box=document.createElement('article');box.className='panel';box.id='shopAnalyticsStandalone';box.innerHTML='<h3>Shop-Statistik</h3><div id="shopStatGrid" class="shop-stat-grid"><div class="muted">Wird geladen …</div></div>';panel.appendChild(box)}const grid=box.querySelector('#shopStatGrid');const {data:products}=await db.from('products').select('*').eq('merchant_id',merchant.id);const mine=products||[],ids=mine.map(p=>p.id);let orders=[];if(ids.length){const {data:items}=await db.from('order_items').select('order_id,product_id,quantity,unit_price,orders(id,status,created_at)').in('product_id',ids);const grouped={};(items||[]).forEach(i=>{const o=i.orders;if(!o||['new','cancelled'].includes(o.status))return;(grouped[o.id]??={...o,items:[]}).items.push(i)});orders=Object.values(grouped)}const revenue=orders.reduce((s,o)=>s+o.items.reduce((x,i)=>x+Number(i.unit_price||0)*Number(i.quantity||0),0),0),sold=orders.reduce((s,o)=>s+o.items.reduce((x,i)=>x+Number(i.quantity||0),0),0),open=orders.filter(o=>['paid','processing'].includes(o.status)).length,stock=mine.reduce((s,p)=>s+Number(p.stock||0),0),avg=orders.length?revenue/orders.length:0;grid.innerHTML=`<div class="shop-stat-grid"><div class="shop-stat-card"><strong>${orders.length}</strong><span>Bestellungen</span></div><div class="shop-stat-card"><strong>${money(revenue)}</strong><span>Umsatz</span></div><div class="shop-stat-card"><strong>${sold}</strong><span>Artikel verkauft</span></div><div class="shop-stat-card"><strong>${money(avg)}</strong><span>Ø Bestellwert</span></div><div class="shop-stat-card"><strong>${open}</strong><span>Offene Bestellungen</span></div><div class="shop-stat-card"><strong>${stock}</strong><span>Artikel auf Lager</span></div></div>`;await loadSalesAnalytics(merchant,orders,mine);await loadVisitorAnalytics(merchant)}
+  trackShopVisitor();clearInterval(refreshTimer);refreshTimer=setInterval(load,30000);new MutationObserver(()=>load()).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});load();
 })();
