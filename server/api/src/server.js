@@ -1,5 +1,6 @@
 import express from 'express';
 import pg from 'pg';
+import { migrate } from './migrate.js';
 
 const { Pool } = pg;
 const app = express();
@@ -27,9 +28,14 @@ app.get('/healthz', async (_req, res) => {
 app.get('/api/v1/status', async (_req, res) => {
   try {
     const result = await pool.query(
-      "select exists(select 1 from information_schema.tables where table_schema='public' and table_name='schema_migrations') as schema_ready"
+      'select version from schema_migrations order by version desc limit 1'
     );
-    res.json({ ok: true, version: '0.1.0', migration: result.rows[0].schema_ready ? 'baseline-ready' : 'pending' });
+    res.json({
+      ok: true,
+      version: '0.1.0',
+      migration: result.rows[0]?.version ?? null,
+      database: 'postgresql'
+    });
   } catch (error) {
     console.error('status database error', error);
     res.status(503).json({ ok: false, version: '0.1.0', migration: 'database-unavailable' });
@@ -40,9 +46,23 @@ app.use((_req, res) => {
   res.status(404).json({ ok: false, error: 'not_found' });
 });
 
+app.use((error, _req, res, _next) => {
+  console.error(error);
+  res.status(500).json({ ok: false, error: 'internal_server_error' });
+});
+
 const server = app.listen(port, '0.0.0.0', () => {
   console.log(`Zorqemi API listening on ${port}`);
 });
+
+try {
+  await migrate(pool);
+} catch (error) {
+  console.error('Database migration failed:', error);
+  server.close();
+  await pool.end();
+  process.exit(1);
+}
 
 const shutdown = async (signal) => {
   console.log(`Received ${signal}, shutting down`);
@@ -52,5 +72,5 @@ const shutdown = async (signal) => {
   });
 };
 
-process.on('SIGTERM', shutdown);
-process.on('SIGINT', shutdown);
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
