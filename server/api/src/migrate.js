@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const dbDir = path.resolve(here, '../../db');
+const dbDir = path.resolve(here, '../db');
 
 export async function migrate(pool) {
   await pool.query(`
